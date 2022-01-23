@@ -22,7 +22,7 @@
 
 #include "d:\include\conc.h"
 
-#include "ims332.h"
+#include "IMS332.H"
 /*{{{  notes on compiling and linking*/
 /*
 This module is compiled as indicated above so it will be relocatable.
@@ -62,11 +62,22 @@ LOADGB *ld;
     Channel *fd_in = ld->up_in;
     Channel *fd_out = ld->up_in-4;
     int cmd;
+
     ChanOutInt(fd_out,1);
     cmd = ChanInInt(fd_in);
     if (cmd == 0x41)
     {
         ChanOutInt(fd_out,0x42);
+    }
+
+    {
+        ims332_padded_regmap_t regs = (ims332_padded_regmap_t)0x40000000;
+        unsigned int *reset = (unsigned int *)0x00000000;
+        XFCB_MONITOR_TYPE mon;  
+        struct vstate state;
+        ims332_init(regs, reset, &mon);
+        state.regs = regs;
+        ims332_video_on(&state);
     }
 }
 

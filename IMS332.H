@@ -49,7 +49,10 @@
 #ifndef	_CHIPS_IMS332_H_
 #define	_CHIPS_IMS332_H_	1
 
-typedef /*volatile*/ unsigned char *ims332_padded_regmap_t;
+/*LSC89 compiler*/
+#define volatile
+
+typedef volatile unsigned char *ims332_padded_regmap_t;
 
 /*
  * Color map
@@ -61,28 +64,28 @@ typedef struct {
     unsigned char blue;
 } color_map_t;
 
-void ims332_load_colormap(ims332_padded_regmap_t *regs, color_map_t	*map);
-void ims332_load_colormap_entry(ims332_padded_regmap_t *regs, int entry_, color_map_t *map);
-void ims332_init_colormap(ims332_padded_regmap_t *regs);
-void ims332_print_colormap(ims332_padded_regmap_t *regs);
+void ims332_load_colormap(ims332_padded_regmap_t regs, color_map_t	*map);
+void ims332_load_colormap_entry(ims332_padded_regmap_t regs, int entry_, color_map_t *map);
+void ims332_init_colormap(ims332_padded_regmap_t regs);
+void ims332_print_colormap(ims332_padded_regmap_t regs);
 
 /*
  * Video on/off
  */
 struct vstate {
-	ims332_padded_regmap_t	*regs;
+	ims332_padded_regmap_t	regs;
 	unsigned short	off;
 };
 
-ims332_video_off(struct vstate *vstate);
-ims332_video_on(struct vstate *vstate);
+void ims332_video_off(struct vstate *vstate);
+void ims332_video_on(struct vstate *vstate);
 
 /*
  * Cursor
  */
-void ims332_pos_cursor(ims332_padded_regmap_t *regs, int x, int y);
-void ims332_cursor_color( ims332_padded_regmap_t *regs, color_map_t	*color);
-void ims332_cursor_sprite( ims332_padded_regmap_t *regs, unsigned short *cursor);
+void ims332_pos_cursor(ims332_padded_regmap_t regs, int x, int y);
+void ims332_cursor_color( ims332_padded_regmap_t regs, color_map_t	*color);
+void ims332_cursor_sprite( ims332_padded_regmap_t regs, unsigned short *cursor);
 
 /*
  * Initialization
@@ -106,7 +109,7 @@ typedef struct {
 
 typedef XFCB_MONITOR_TYPE *xcfb_monitor_type_t;
 
-void ims332_init(ims332_padded_regmap_t *regs, unsigned int reset, xcfb_monitor_type_t mon);
+void ims332_init(ims332_padded_regmap_t regs, unsigned int *reset, xcfb_monitor_type_t mon);
 
 
 /*
