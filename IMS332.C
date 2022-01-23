@@ -100,6 +100,7 @@ void ims332_write_register(regs, regno, val)
 	* ((volatile unsigned short *)(wptr)) = val;
 }
 
+/* Looks like this uses the subsystem port on the T805 to reset the 332 */
 #define	assert_ims332_reset_bit(r)	*r &= ~0x40
 #define	deassert_ims332_reset_bit(r)	*r |=  0x40
 

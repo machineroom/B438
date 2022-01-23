@@ -71,8 +71,9 @@ LOADGB *ld;
     }
 
     {
+        /* addresses for subsystem port and memory mapped IMS332 (assuming the B438 is anything like the B419) */
         ims332_padded_regmap_t regs = (ims332_padded_regmap_t)0x40000000;
-        unsigned int *reset = (unsigned int *)0x00000000;
+        unsigned int *reset = (unsigned int *)0x000000F0;
         XFCB_MONITOR_TYPE mon;  
         struct vstate state;
         ims332_init(regs, reset, &mon);
