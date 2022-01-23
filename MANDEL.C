@@ -22,6 +22,7 @@
 
 #include "d:\include\conc.h"
 
+#include "ims332.h"
 /*{{{  notes on compiling and linking*/
 /*
 This module is compiled as indicated above so it will be relocatable.

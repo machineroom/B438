@@ -49,6 +49,66 @@
 #ifndef	_CHIPS_IMS332_H_
 #define	_CHIPS_IMS332_H_	1
 
+typedef /*volatile*/ unsigned char *ims332_padded_regmap_t;
+
+/*
+ * Color map
+ */
+/* JamesW guess at this */
+typedef struct {
+    unsigned char red;
+    unsigned char green;
+    unsigned char blue;
+} color_map_t;
+
+void ims332_load_colormap(ims332_padded_regmap_t *regs, color_map_t	*map);
+void ims332_load_colormap_entry(ims332_padded_regmap_t *regs, int entry_, color_map_t *map);
+void ims332_init_colormap(ims332_padded_regmap_t *regs);
+void ims332_print_colormap(ims332_padded_regmap_t *regs);
+
+/*
+ * Video on/off
+ */
+struct vstate {
+	ims332_padded_regmap_t	*regs;
+	unsigned short	off;
+};
+
+ims332_video_off(struct vstate *vstate);
+ims332_video_on(struct vstate *vstate);
+
+/*
+ * Cursor
+ */
+void ims332_pos_cursor(ims332_padded_regmap_t *regs, int x, int y);
+void ims332_cursor_color( ims332_padded_regmap_t *regs, color_map_t	*color);
+void ims332_cursor_sprite( ims332_padded_regmap_t *regs, unsigned short *cursor);
+
+/*
+ * Initialization
+ */
+
+/* JamesW guess at this */
+typedef struct {
+    int line_time;
+    int half_sync;
+    int back_porch;
+    int frame_visible_width;
+    int frame_visible_height;
+    int v_sync;
+    int v_pre_equalize;
+    int v_post_equalize;
+    int v_blank;
+	int line_start;
+	int mem_init;
+	int xfer_delay;
+} XFCB_MONITOR_TYPE;
+
+typedef XFCB_MONITOR_TYPE *xcfb_monitor_type_t;
+
+void ims332_init(ims332_padded_regmap_t *regs, unsigned int reset, xcfb_monitor_type_t mon);
+
+
 /*
  * Although the chip is built to be memory-mapped
  * it can be programmed for 32 or 64 bit addressing.

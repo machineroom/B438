@@ -66,19 +66,11 @@
  *	Routines for the Inmos IMS-G332 Colour video controller
  */
 
-#include <platforms.h>
-
-#include <chips/ims332.h>
-#include <chips/screen.h>
-
-#include <chips/xcfb_monitor.h>
+#include "ims332.h"
 
 /*
  * Generic register access
  */
-typedef volatile unsigned char *ims332_padded_regmap_t;
-
-#ifdef	MAXINE
 
 unsigned int
 ims332_read_register(regs, regno)
@@ -95,7 +87,7 @@ ims332_read_register(regs, regno)
 	return (val & 0xffff) | ((v1 & 0xff00) << 8);
 }
 
-ims332_write_register(regs, regno, val)
+void ims332_write_register(regs, regno, val)
 	unsigned char		*regs;
 	register unsigned int	val;
 {
@@ -110,20 +102,10 @@ ims332_write_register(regs, regno, val)
 #define	assert_ims332_reset_bit(r)	*r &= ~0x40
 #define	deassert_ims332_reset_bit(r)	*r |=  0x40
 
-#else	/*MAXINE*/
-
-#define	ims332_read_register(p,r)			\
-		((unsigned int *)(p)) [ (r) ]
-#define	ims332_write_register(p,r,v)			\
-		((unsigned int *)(p)) [ (r) ] = (v)
-
-#endif	/*MAXINE*/
-
-
 /*
  * Color map
  */
-ims332_load_colormap( regs, map)
+void ims332_load_colormap( regs, map)
 	ims332_padded_regmap_t	*regs;
 	color_map_t	*map;
 {
@@ -133,21 +115,22 @@ ims332_load_colormap( regs, map)
 		ims332_load_colormap_entry(regs, i, map);
 }
 
-ims332_load_colormap_entry( regs, entry, map)
+void ims332_load_colormap_entry( regs, entry_, map)
 	ims332_padded_regmap_t	*regs;
+	int entry_;
 	color_map_t	*map;
 {
 	/* ?? stop VTG */
-	ims332_write_register(regs, IMS332_REG_LUT_BASE + (entry & 0xff),
+	ims332_write_register(regs, IMS332_REG_LUT_BASE + (entry_ & 0xff),
 			      (map->blue << 16) |
 			      (map->green << 8) |
 			      (map->red));
 }
 
-ims332_init_colormap( regs)
+void ims332_init_colormap( regs)
 	ims332_padded_regmap_t	*regs;
 {
-	color_map_t		m;
+	color_map_t	m;
 
 	m.red = m.green = m.blue = 0;
 	ims332_load_colormap_entry( regs, 0, &m);
@@ -163,8 +146,7 @@ ims332_init_colormap( regs)
 	ims332_load_colormap_entry( regs, IMS332_REG_CURSOR_LUT_2, &m);
 }
 
-#if	1/*debug*/
-ims332_print_colormap( regs)
+void ims332_print_colormap( regs)
 	ims332_padded_regmap_t	*regs;
 {
 	register int    i;
@@ -179,7 +161,6 @@ ims332_print_colormap( regs)
 			color & 0xff);
 	}
 }
-#endif
 
 /*
  * Video on/off
@@ -194,9 +175,8 @@ struct vstate {
 	unsigned short	off;
 };
 
-ims332_video_off(vstate, up)
+void ims332_video_off(vstate)
 	struct vstate	*vstate;
-	user_info_t	*up;
 {
 	register ims332_padded_regmap_t	*regs = vstate->regs;
 	register unsigned		*save, csr;
@@ -205,9 +185,9 @@ ims332_video_off(vstate, up)
 		return;
 
 	/* Yes, this is awful */
-	save = (unsigned *)up->dev_dep_2.gx.colormap;
+	/*save = (unsigned *)up->dev_dep_2.gx.colormap;
 
-	*save = ims332_read_register(regs, IMS332_REG_LUT_BASE);
+	*save = ims332_read_register(regs, IMS332_REG_LUT_BASE);*/
 
 	ims332_write_register(regs, IMS332_REG_LUT_BASE, 0);
 
@@ -221,9 +201,8 @@ ims332_video_off(vstate, up)
 	vstate->off = 1;
 }
 
-ims332_video_on(vstate, up)
+void ims332_video_on(vstate)
 	struct vstate	*vstate;
-	user_info_t	*up;
 {
 	register ims332_padded_regmap_t	*regs = vstate->regs;
 	register unsigned		*save, csr;
@@ -232,9 +211,9 @@ ims332_video_on(vstate, up)
 		return;
 
 	/* Like I said.. */
-	save = (unsigned *)up->dev_dep_2.gx.colormap;
+	/*save = (unsigned *)up->dev_dep_2.gx.colormap;
 
-	ims332_write_register(regs, IMS332_REG_LUT_BASE, *save);
+	ims332_write_register(regs, IMS332_REG_LUT_BASE, *save);*/
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffffff);
 
@@ -249,7 +228,7 @@ ims332_video_on(vstate, up)
 /*
  * Cursor
  */
-ims332_pos_cursor(regs,x,y)
+void ims332_pos_cursor(regs,x,y)
 	ims332_padded_regmap_t	*regs;
 	register int	x,y;
 {
@@ -258,7 +237,7 @@ ims332_pos_cursor(regs,x,y)
 }
 
 
-ims332_cursor_color( regs, color)
+void ims332_cursor_color( regs, color)
 	ims332_padded_regmap_t	*regs;
 	color_map_t	*color;
 {
@@ -274,7 +253,7 @@ ims332_cursor_color( regs, color)
 			      (color->red));
 }
 
-ims332_cursor_sprite( regs, cursor)
+void ims332_cursor_sprite( regs, cursor)
 	ims332_padded_regmap_t	*regs;
 	unsigned short		*cursor;
 {
@@ -289,7 +268,7 @@ ims332_cursor_sprite( regs, cursor)
 /*
  * Initialization
  */
-ims332_init(regs, reset, mon)
+void ims332_init(regs, reset, mon)
 	ims332_padded_regmap_t	*regs;
 	unsigned int		*reset;
 	xcfb_monitor_type_t	mon;
