@@ -1,0 +1,138 @@
+;******************************* IDENT.TAL ********************************
+;  (C) Copyright 1987-1993  Computer System Architects, Provo UT.           *
+;  This  program is the property of Computer System Architects (CSA)        *
+;  and is provided only as an example of a transputer/PC program for        *
+;  use  with CSA's Transputer Education Kit and other transputer products.  *
+;  You may freely distribute copies or modifiy the program as a whole or in *
+;  part, provided you insert in each copy appropriate copyright notices and *
+;  disclaimer of warranty and send to CSA a copy of any modifications which *
+;  you plan to distribute.						    *
+;  This program is provided as is without warranty of any kind. CSA is not  *
+;  responsible for any damages arising out of the use of this program.      *
+;***************************************************************************/
+;****************************************************************************
+; This program  works with FLBOOT.TAL and FLLOAD.TAL. It gives all *
+; transputers an ID by first giving itself an ID (0) and then sending a higher id (1)
+; to it's children. After setting the ID's it collects network info from it's
+; children, adds it on and sends it to it's parent. The network information
+; has a single  field:
+; 1. Total number of nodes in the subtree acting this as root. Variable:NNODES
+;***************************************************************************
+	.all
+
+;{{{  constant definition;
+    .val    TRUE,1
+    .val    FALSE,0
+    .val    RESERVE,12
+
+    .val    ID,0                    ; common fields with FLBOOT
+    .val    BOOTIN,3
+    .val    BOOTOUT,4               ; 4,5,6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
+
+    .val    TMPID,0
+    .val    TLINK,1
+    .val    LOOPA,2
+    .val    LOOPB,3
+    .val    TO_PARENT,4
+    .val    NNODES,5
+    .val    TEMP1,6
+    .val    STATIC,13
+
+    .val    DFLAG,0
+    .val    LOADING,1
+;}}}  ;
+
+    .pub    START
+START:  ajw     -RESERVE
+;{{{  loop to send id';
+    ldlp    TMPID                   ;input ID
+    ldl     STATIC
+    ldnl    BOOTIN
+    ldc     1
+    in                              ;read 1 byte from BOOTIN to TMPID
+
+    ldlp    TMPID                   ;ID:= TMPID
+    lb
+    ldl     STATIC
+    stnl    ID
+    
+    ldl     TMPID                   ;TMPID:= TMPID BITOR 1
+    ldc     1
+    or
+    stl     TMPID
+    ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
+    stl     LOOPA
+    ldc     3
+    stl     LOOPB
+L1: ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
+    ldl     STATIC
+    ldnlp   BOOTOUT
+    wsub
+    ldnl    0
+    stl     TLINK
+    ldl     TLINK                   ;if TLINK <> 0
+    cj      @L2
+    ldlp    TMPID                   ;send ID to child
+    ldl     TLINK
+    ldc     1
+    out
+L2: ldlp    LOOPA
+    ldc     L3-L1
+    lend                            ;end loop
+L3: ldc     TRUE
+    stl     DFLAG
+    ldc     TRUE
+    stl     LOADING
+;}}}  ;
+;{{{  get info to send to paren;
+;{{{  start out assuming we are leaf node;
+    ldc    1
+    stl    NNODES
+;}}}  ;
+;{{{  get results from other branches of tree if they exist;
+    ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
+    stl     LOOPA
+    ldc     3
+    stl     LOOPB
+N1: ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
+    ldl     STATIC
+    ldnlp   BOOTOUT
+    wsub
+    ldnl    0
+    stl     TLINK
+    ldl     TLINK                ;if TLINK <> 0
+    cj      @N2
+    ldl     TLINK                ;TLINK := TLINK + 16
+    ldc     16                   ;point to input channel    (input=output+4 words)
+    sum
+    stl     TLINK
+    ldlp    TEMP1                ;get NNODES
+    ldl     TLINK                ;from child
+    ldc     4
+    in
+
+    ldl     NNODES               ;add node numbers
+    ldl     TEMP1
+    sum
+    stl     NNODES
+
+N2: ldlp    LOOPA
+    ldc     N3-N1
+	lend                            ;end loop
+N3:
+;}}}  ;
+;{{{  send results to root;
+    ldl     STATIC
+    ldnl    BOOTIN
+    ldc     16
+    diff
+    stl     TO_PARENT
+    ldlp    NNODES        ;   send NNODES
+    ldl     TO_PARENT     ;   to parent
+    ldc     4
+    out
+
+;}}}  ;
+    ajw     RESERVE
+    ret
+    .end
