@@ -80,7 +80,8 @@ ims332_read_register(regs, regno)
 	register unsigned int	val, v1;
 
 	/* spec sez: */
-	rptr = regs + 0x80000 + (regno << 4);
+	/*rptr = regs + 0x80000 + (regno << 4);*/
+	*rptr = regs + (regno << 4);
 	val = * ((volatile unsigned short *) rptr );
 	v1  = * ((volatile unsigned short *) regs );
 
@@ -95,7 +96,8 @@ void ims332_write_register(regs, regno, val)
 	unsigned char		*wptr;
 
 	/* spec sez: */
-	wptr = regs + 0xa0000 + (regno << 4);
+	/*wptr = regs + 0xa0000 + (regno << 4);*/
+	wptr = regs + (regno << 4);
 	* ((volatile unsigned int *)(regs))   = (val >> 8) & 0xff00;
 	* ((volatile unsigned short *)(wptr)) = val;
 }
