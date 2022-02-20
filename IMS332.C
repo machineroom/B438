@@ -261,21 +261,26 @@ void ims332_cursor_sprite( regs, cursor)
 			IMS332_REG_CURSOR_RAM+i, *cursor);
 }
 
+void B438_write_register (unsigned int *addr, unsigned int val) {
+	*addr = val;
+}
+
+void B438_reset(void) {
+	B438_write_register (B438_REG_7, 0);	/* assert 335 reset */
+
+	B438_write_register (B438_REG_7, 1);	/* deassert 335 reset */
+}
+
 /*
  * Initialization
  */
-void ims332_init(regs, reset, mon)
+void ims332_init(regs, mon)
 	ims332_padded_regmap_t	regs;
-	unsigned int		*reset;
 	xcfb_monitor_type_t	mon;
 {
 	int shortdisplay;
 	int broadpulse;
 	int frontporch;
-
-	assert_ims332_reset_bit(reset);
-	/* TODO delay(1);	/* specs sez 50ns.. */
-	deassert_ims332_reset_bit(reset);
 
 	/* CLOCKIN appears to receive a 6.25 Mhz clock --> PLL 12 for 75Mhz monitor */
 	ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);

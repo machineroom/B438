@@ -109,7 +109,7 @@ typedef struct {
 
 typedef XFCB_MONITOR_TYPE *xcfb_monitor_type_t;
 
-void ims332_init(ims332_padded_regmap_t regs, unsigned int *reset, xcfb_monitor_type_t mon);
+void ims332_init(ims332_padded_regmap_t regs, xcfb_monitor_type_t mon);
 
 
 /*
@@ -210,5 +210,16 @@ void ims332_init(ims332_padded_regmap_t regs, unsigned int *reset, xcfb_monitor_
 #define	IMS332_BOOT_64_BIT_MODE		0x000040	/* else 32 */
 #define	IMS332_BOOT_xxx			0xffff80	/* reserved, mbz */
 
+/* 
+ * B438 TRAM registers (assuming same as B437)
+ */
+#define B438_REG_0 (unsigned int *)0x40000000
+#define B438_REG_1 (unsigned int *)0x40000004
+#define B438_REG_2 (unsigned int *)0x40000008
+#define B438_REG_3 (unsigned int *)0x4000000C
+#define B438_REG_4 (unsigned int *)0x40000010
+#define B438_REG_5 (unsigned int *)0x40000014
+#define B438_REG_6 (unsigned int *)0x40000018
+#define B438_REG_7 (unsigned int *)0x4000001C
 
 #endif	_CHIPS_IMS332_H_
