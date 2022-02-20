@@ -84,6 +84,10 @@ void boot_transputer(void)
         exit(1);
     }
     printf("ack = 0x%X\n", ack);
+    if (ack != 0xB007EEED) {
+        printf ("boot ACK not as expected!\n");
+        exit(1);
+    }
     if (FLAGS_verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (FLAGS_verbose) printf("ID'ing...\n");
