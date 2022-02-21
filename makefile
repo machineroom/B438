@@ -6,7 +6,7 @@
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
-all: main
+all: main probe
 
 LSC89=${HOME}/lsc-V89.1
 LSC89_BIN=d:\exe
@@ -43,6 +43,9 @@ lsc_debug:
     
 main : main.c lkio_c011.c c011.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR
 	g++ -O2 main.c lkio_c011.c c011.c -lbcm2835 -lm -lgflags -o $@
+
+probe : probe.c lkio_c011.c c011.c
+	g++ -O0 probe.c lkio_c011.c c011.c -lbcm2835 -lm -lgflags -o $@
 
 clean:
 	rm -f *.OBJ

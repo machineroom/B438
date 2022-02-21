@@ -38,14 +38,14 @@ int main(int argc, char **argv) {
         printf(" -- timeout sending 0x41 test\n");
         exit(1);           
     }
-    int test;
+    uint32_t test;
     if (word_in(&test)) {
         printf(" -- timeout getting test word (main)\n");
         exit(1);
     }
     printf("\nfrom transputer code:");
     printf("\n\tword : 0x%X\n",test);
-    
+    sleep(5);
     return(0);
 }
 
@@ -73,7 +73,7 @@ void memdump (char *buf, int cnt) {
 #include "MANDEL.ARR"
 
 void boot_transputer(void)
-{   int ack, nnodes, word0;
+{   uint32_t ack, nnodes, word0;
 
     rst_adpt();
     if (FLAGS_verbose) printf("Booting...\n");
@@ -85,20 +85,21 @@ void boot_transputer(void)
     }
     printf("ack = 0x%X\n", ack);
     if (ack != 0xB007EEED) {
-        printf ("boot ACK not as expected!\n");
+        printf ("boot ACK not as expected (B007EEED)!\n");
         exit(1);
     }
+    sleep(1);
     if (FLAGS_verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (FLAGS_verbose) printf("ID'ing...\n");
     // IDENT will give master node ID 0 and other nodes ID 1
     if (!load_buf(IDENT,sizeof(IDENT))) exit(1);
-    if (tbyte_out(0))
+    if (byte_out(0))
     {
         printf(" -- timeout sending execute\n");
         exit(1);
     }
-    if (tbyte_out(0))
+    if (byte_out(0))
     {
         printf(" -- timeout sending id\n");
         exit(1);
@@ -111,7 +112,7 @@ void boot_transputer(void)
     printf("\n\tnodes found: %d\n",nnodes);
     if (FLAGS_verbose) printf("\nSending mandel-code");
     if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
-    if (tbyte_out(0))
+    if (byte_out(0))
     {
         printf("\n -- timeout sending execute");
         exit(1);
@@ -126,14 +127,15 @@ void boot_transputer(void)
 
 /* return TRUE if loaded ok, FALSE if error. */
 int load_buf (char *buf, int bcnt) {
-    int wok,len;
+    int wok;
+    uint8_t len;
 
     do {
         len = (bcnt > 255) ? 255 : bcnt;
         bcnt -= len;
-        wok = tbyte_out(len);
+        wok = byte_out(len);
         while (len-- && wok==0) {
-            wok = tbyte_out(*buf++);
+            wok = byte_out((uint8_t)*buf++);
         } 
     } while (bcnt && wok==0);
     if (wok) {

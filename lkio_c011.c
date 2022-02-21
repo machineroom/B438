@@ -16,12 +16,12 @@ int init_lkio() {
 }
 
 //return 0==OK, -1 error
-int tbyte_out(int p) {
-    return c011_write_byte ((uint8_t)p, TIMEOUT);
+int byte_out(uint8_t p) {
+    return c011_write_byte (p, TIMEOUT);
 }
 
 //return 0==OK, -1 error
-int word_in(int *word) {
+int word_in(uint32_t *word) {
     int stat;
     uint8_t b1;     //MS byte
     uint8_t b2;
@@ -35,7 +35,7 @@ int word_in(int *word) {
     if (stat) return stat;
     stat = c011_read_byte (&b1, TIMEOUT);
     if (stat) return stat;
-    long ret=0;
+    uint32_t ret=0;
     ret |= b1;
     ret <<= 8;
     ret |= b2;
@@ -49,7 +49,7 @@ int word_in(int *word) {
 }
 
 //return 0==OK, -1 error
-int word_out(int p) {
+int word_out(uint32_t p) {
     int stat;
     uint8_t b1 = p>>24;     //MS byte
     uint8_t b2 = p>>16;
@@ -66,14 +66,14 @@ int word_out(int p) {
     return 0;
 }
 
-int chan_in(char *p, unsigned int count) {
-    uint32_t done = c011_read_bytes ((uint8_t *)p, count, TIMEOUT);
+int chan_in(uint8_t *p, unsigned int count) {
+    uint32_t done = c011_read_bytes (p, count, TIMEOUT);
     if (done==count) return 0;
     else return -1;
 }
 
-int chan_out(char *p, unsigned int count) {
-    uint32_t done = c011_write_bytes ((uint8_t *)p, count, TIMEOUT);
+int chan_out(uint8_t *p, unsigned int count) {
+    uint32_t done = c011_write_bytes (p, count, TIMEOUT);
     if (done==count) return 0;
     else return -1;
 }
