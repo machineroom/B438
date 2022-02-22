@@ -91,20 +91,27 @@ void ims332_cursor_sprite( ims332_padded_regmap_t regs, unsigned short *cursor);
  * Initialization
  */
 
-/* JamesW guess at this */
-typedef struct {
-    int line_time;
-    int half_sync;
-    int back_porch;
-    int frame_visible_width;
-    int frame_visible_height;
-    int v_sync;
-    int v_pre_equalize;
-    int v_post_equalize;
-    int v_blank;
-	int line_start;
-	int mem_init;
-	int xfer_delay;
+// monitor config http://fxr.watson.org/fxr/source/chips/xcfb_hdw.c?v=MK84#L187
+//{ "VRM17", 1024, 768, 1024, 1024, 16, 33,
+//  176                   6, 2, 2, 21, 326, 16, 10, 10 },
+
+// from xcfb code http://fxr.watson.org/fxr/source/chips/xcfb_monitor.h?v=MK84#L62
+typedef struct xcfb_monitor_type {
+    char *name;
+    short frame_visible_width; /* pixels */
+    short frame_visible_height;
+    short frame_scanline_width;
+    short frame_height;
+    short half_sync;        /* screen units (= 4 pixels) */
+    short back_porch;
+    short v_sync;           /* lines */
+    short v_pre_equalize;
+    short v_post_equalize;
+    short v_blank;
+    short line_time;        /* screen units */
+    short line_start;
+    short mem_init;         /* some units */
+    short xfer_delay;
 } XFCB_MONITOR_TYPE;
 
 typedef XFCB_MONITOR_TYPE *xcfb_monitor_type_t;
@@ -210,16 +217,4 @@ void ims332_init(ims332_padded_regmap_t regs, xcfb_monitor_type_t mon);
 #define	IMS332_BOOT_64_BIT_MODE		0x000040	/* else 32 */
 #define	IMS332_BOOT_xxx			0xffff80	/* reserved, mbz */
 
-/* 
- * B438 TRAM registers (assuming same as B437)
- */
-#define B438_REG_0 (unsigned int *)0x40000000
-#define B438_REG_1 (unsigned int *)0x40000004
-#define B438_REG_2 (unsigned int *)0x40000008
-#define B438_REG_3 (unsigned int *)0x4000000C
-#define B438_REG_4 (unsigned int *)0x40000010
-#define B438_REG_5 (unsigned int *)0x40000014
-#define B438_REG_6 (unsigned int *)0x40000018
-#define B438_REG_7 (unsigned int *)0x4000001C
-
-#endif	_CHIPS_IMS332_H_
+#endif	/* _CHIPS_IMS332_H_ */

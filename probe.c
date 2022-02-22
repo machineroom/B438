@@ -9,6 +9,7 @@
 #include <assert.h>
 #include "c011.h"
 #include <gflags/gflags.h>
+#include "IMS332.H"
 
 
 #define JOBCOM 0L
@@ -66,20 +67,78 @@ void B438_reset_G335(void) {
     usleep(1);  // >50ns
 }
 
+void ims332_write_register(uint32_t regs, int regno, unsigned int val)
+{
+	uint32_t wptr;
+
+	wptr = regs + (regno * 4);  //32 bit word addressing
+    poke (wptr, val);
+}
+
+static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
+{
+	int shortdisplay;
+	int broadpulse;
+	int frontporch;
+
+	/* CLOCKIN appears to receive a 6.25 Mhz clock --> PLL 12 for 75Mhz monitor */
+	ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
+
+	/* initialize VTG */
+	ims332_write_register(regs, IMS332_REG_CSR_A,
+				IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR);
+	/* TODO delay(50);	/* spec does not say */
+
+	/* datapath registers (values taken from prom's settings) */
+
+	frontporch = mon->line_time - (mon->half_sync * 2 +
+				       mon->back_porch +
+				       mon->frame_visible_width / 4);
+
+	shortdisplay = mon->line_time / 2 - (mon->half_sync * 2 +
+					     mon->back_porch + frontporch);
+	broadpulse = mon->line_time / 2 - frontporch;
+
+	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
+	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
+	ims332_write_register( regs, IMS332_REG_DISPLAY,
+			      mon->frame_visible_width / 4);
+	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	shortdisplay);
+	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	broadpulse);
+	ims332_write_register( regs, IMS332_REG_V_SYNC,		mon->v_sync * 2);
+	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE,
+			      mon->v_pre_equalize);
+	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,
+			      mon->v_post_equalize);
+	ims332_write_register( regs, IMS332_REG_V_BLANK,	mon->v_blank * 2);
+	ims332_write_register( regs, IMS332_REG_V_DISPLAY,
+			      mon->frame_visible_height * 2);
+	ims332_write_register( regs, IMS332_REG_LINE_TIME,	mon->line_time);
+	ims332_write_register( regs, IMS332_REG_LINE_START,	mon->line_start);
+	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	mon->mem_init);
+	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	mon->xfer_delay);
+
+	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
+
+	//ims332_init_colormap( regs );
+
+	ims332_write_register(regs, IMS332_REG_CSR_A,
+		IMS332_BPP_8 | IMS332_CSR_A_DMA_DISABLE | IMS332_CSR_A_VTG_ENABLE);
+
+}
+
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
+
+    XFCB_MONITOR_TYPE mon = { (const char *)"VRM17", 1024, 768, 1024, 1024, 16, 33, 6, 2, 2, 21, 326, 16, 10, 10 };
+
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     init_lkio();
     rst_adpt();
 
-    //B437 values
-    // board control 40000000-4000001F
-    // DRAM          80001000-80100FFF  (80001000 start of T805 external memory)    1MB
-    // 332           00000000-3FFFFFFF
-    
-    //T805 values
-    // memint        80000000-80000FFF
+    B438_reset_G335();
+    probe_ims332_init (0, &mon);
 
     //B438 equipped with:
     // 8 * NEC B424400 DRAM 1Mb*4 bit = 4MB DRAM
@@ -115,10 +174,8 @@ int main(int argc, char **argv) {
       }
       addr += 0x10000000;
     }*/
-    B438_reset_G335();
 
-
-    test (0x90000000, 4);
+    /*test (0x90000000, 4);
     test (0xA0000000, 4);
     test (0xB0000000, 4);
     test (0xC0000000, 4);
@@ -126,6 +183,7 @@ int main(int argc, char **argv) {
     test (0xE0000000, 4);
     test (0xF0000000, 4);
     test (0x80000000, 4096);    // internal memory
+    */
     //test (0x80001000, 8*1024*1024);    // start of DRAM
     return(0);
 }
