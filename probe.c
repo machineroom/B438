@@ -58,6 +58,14 @@ int poke(uint32_t addr, uint32_t val) {
     word_out (val);
 }
 
+void B438_reset_G335(void) {
+    poke (0x7FF00000,0);
+    poke (0x7FF00000,1);
+    usleep(1);
+    poke (0x7FF00000,0);
+    usleep(1);  // >50ns
+}
+
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
@@ -78,26 +86,38 @@ int main(int argc, char **argv) {
     // 8 * NEC D482234 VRAM 256K*8 bit = 2MB VRAM
 
     // B438 derived map:
-    // DRAM          80001000-805FFFFF  (80001000 start of T805 external memory)    6MB DRAM+VRAM
+    // G335          00000000-7FFFFFFF (!CS asserted on write)
+    // memint        80000000-80000FFF
+    // RAM           80001000-805FFFFF  (80001000 start of T805 external memory)    6MB DRAM+VRAM
     // DRAM+VRAM repeat in -ve memory (i.e 0x90001000..0xF0001000)
-    uint32_t addr = 0x50000000;
-    while (1) {
-        poke (addr,0);
-        sleep(1);
-        poke (addr,-1);
-        sleep(1);
-        addr += 4;
+    // 335 reset reg 7FF00000 (0 reset low, 1 reset high - active high)
+    /*
+    uint32_t addr = 0x00000000;
+    for (int i=0; i < 16; i++) {
+      for (int j=0; j < 64*4; j += 4) {
+        poke (addr+j,0);
+        usleep(50*1000);
+        poke (addr+j,-1);
+        usleep(50*1000);
+      }
+      addr += 0x10000000;
     }
+    exit (0);
+    */
+
+    /*uint32_t addr = 0x7FF00000;
+    for (int i=0; i < 16; i++) {
+      for (int j=0; j < 0xFFFF; j += 4) {
+        poke (addr+j,0);
+        usleep(1000*1000);
+        poke (addr+j,1);
+        usleep(1000*1000);
+      }
+      addr += 0x10000000;
+    }*/
+    B438_reset_G335();
 
 
-    test (0x00000000, 4);
-    test (0x10000000, 4);
-    test (0x20000000, 4);
-    test (0x30000000, 4);
-    test (0x40000000, 4);
-    test (0x50000000, 4);
-    test (0x60000000, 4);
-    test (0x70000000, 4);
     test (0x90000000, 4);
     test (0xA0000000, 4);
     test (0xB0000000, 4);
