@@ -104,7 +104,10 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 	ims332_write_register(regs, IMS332_REG_CSR_A, 0);
     usleep(100);
 
-    //B438 magic from f003e (VRAM SRAM style=Split SAM, Sync on Green only, External pixel sampling mode)
+    //B438 magic from f003e
+        //0x08 = VRAM SRAM style=Split SAM
+        //0x02 = Sync on Green only
+        //0x01 = External pixel sampling mode)
 	ims332_write_register(regs, IMS332_REG_CSR_B, 0xb);
 
 
@@ -149,6 +152,9 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
     CSRA |= IMS332_VRAM_INC_1024;
     CSRA |= IMS332_CSR_A_PLAIN_SYNC;
     CSRA |= IMS332_CSR_A_VTG_ENABLE;
+
+    //CSRA |= IMS332_CSR_A_SEPARATE_SYNC;
+    //CSRA |= IMS332_CSR_A_VIDEO_ONLY;
 
     //B43011
     //101101000011000000010001
@@ -239,27 +245,30 @@ int main(int argc, char **argv) {
 
     //setup colour palette
     printf ("set palette\n");
-    //clear to grey
-    for (int i=0; i < 256; i++) {
-        set_palette (regs, i, 30, 30, 30);
-    }
-    // 0 = blue
-    set_palette (regs, 0, 0, 0, 255);
+    // 0 = black
+    set_palette (regs, 0, 0, 0, 0);
+    // F = grey
+    //TODO something odd here - 0,0,0 produces a dirty green. Sync on green?
+    set_palette (regs, 0xF, 40, 40, 40);
     // 1 = red
     set_palette (regs, 1, 255, 0, 0);
     // 2 = green
     set_palette (regs, 2, 0, 255, 0);
-    // 3 = black
-    set_palette (regs, 3, 0, 0, 0);
+    // 3 = blue
+    set_palette (regs, 3, 0, 0, 255);
+    // 4 = yellow
+    set_palette (regs, 4, 255, 255, 0);
+    // 5 = white
+    set_palette (regs, 5, 255, 255, 255);
 
-    poke_words(0x80400000, 1000, 0x03030303);
-    //sleep(20);
-    //poke_words(0x80400000, q/2, 0x01010101);
-    poke_words(0x80400000,(640*2)/4,0x02020202);
-    //test (0x80001000, 8*1024*1024);    // start of DRAM
+    poke_words(0x80400000, 640*60, 0x0F0F0F0F);
+    poke_words(0x80400000+(640*2*4),640/2,0x01010101);
+    poke_words(0x80400000+(640*4*4),640/2,0x02020202);
+    poke_words(0x80400000+(640*6*4),640/2,0x03030303);
+    poke_words(0x80400000+(640*8*4),640/2,0x04040404);
+    poke_words(0x80400000+(640*10*4),640/2,0x05050505);
     return(0);
 }
-
 
 void memdump (char *buf, int cnt) {
     char *p = buf;
