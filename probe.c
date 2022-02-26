@@ -101,18 +101,24 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
     assert (pll_multiplier>=5);
     assert (pll_multiplier<=31);
 	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
+    usleep(100);
 
     int CSRA = IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR | IMS332_CSR_A_DMA_DISABLE;   // sync on green
-    CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
+    //CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
     //CSRA | IMS332_CSR_A_BLANK_DISABLE;
     //CSRA |= IMS332_CSR_A_CBLANK_IS_OUT;     // sync on green still produces picture
-    CSRA |= IMS332_CSR_A_PLAIN_SYNC;        // sync on green still produces picture
-    CSRA |= IMS332_CSR_A_SEPARATE_SYNC;     // sync on green still produces picture
+    //CSRA |= IMS332_CSR_A_PLAIN_SYNC;        // sync on green still produces picture
+    //CSRA |= IMS332_CSR_A_SEPARATE_SYNC;     // sync on green still produces picture
     //CSRA |= IMS332_CSR_A_VIDEO_ONLY;
 
-	/* initialize VTG */
-	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA);
+	/* disable VTG */
+	ims332_write_register(regs, IMS332_REG_CSR_A, 0);
 	/* TODO delay(50);	/* spec does not say */
+    usleep(100);
+
+    //B438 magic from f003e
+	ims332_write_register(regs, IMS332_REG_CSR_B, 0xb);
+
 
 	frontporch = mon->line_time - (mon->half_sync * 2 +
 				       mon->back_porch +
@@ -163,7 +169,7 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
-	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA | IMS332_CSR_A_VTG_ENABLE);
+	ims332_write_register(regs, IMS332_REG_CSR_A, /*CSRA | IMS332_CSR_A_VTG_ENABLE*/0xb43011);
 
 }
 
@@ -280,9 +286,10 @@ int main(int argc, char **argv) {
     // 255 = green
     set_palette (regs, 255, 0, 255, 0);
 
-    int q=4000;
-    poke_words(0x80404000, q, 0x01010101);
-    poke_words(0x80504000, q, 0x01010101);
+    int q=40000;
+    poke_words(0x80400000, q, 0);
+    sleep(20);
+    poke_words(0x80400000, q/2, 0x01010101);
     //test (0x80001000, 8*1024*1024);    // start of DRAM
     return(0);
 }
