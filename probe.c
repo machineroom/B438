@@ -220,10 +220,10 @@ int main(int argc, char **argv) {
                              640,       //frame_width (pixels)
                              12,    //half_sync (screen units) (VGA HSync=96 clocks)
                              12,      //back_porch (screen units)
-                             4,         //v_sync (lines)
+                             2,         //v_sync (lines?)
                              22,         //v_pre_equalize (half lines)
                              4,         //v_post_equalize (half lines)
-                             64,        //v_blank (lines)
+                             32,        //v_blank (lines?)
                              198,       //line_time (screen units) = half_sync + back_porch + display + front_porch
                              16,        //line_start (screen units)
                              512,        //mem_init (screen units)
@@ -287,9 +287,9 @@ int main(int argc, char **argv) {
     set_palette (regs, 255, 0, 255, 0);
 
     int q=40000;
-    poke_words(0x80400000, q, 0);
-    sleep(20);
-    poke_words(0x80400000, q/2, 0x01010101);
+    //poke_words(0x80400000, q, 0);
+    //sleep(20);
+    //poke_words(0x80400000, q/2, 0x01010101);
     //test (0x80001000, 8*1024*1024);    // start of DRAM
     return(0);
 }
