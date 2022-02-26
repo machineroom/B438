@@ -100,19 +100,11 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
     usleep(100);
 
-    int CSRA = IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR | IMS332_CSR_A_DMA_DISABLE;   // sync on green
-    //CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
-    //CSRA | IMS332_CSR_A_BLANK_DISABLE;
-    //CSRA |= IMS332_CSR_A_CBLANK_IS_OUT;     // sync on green still produces picture
-    //CSRA |= IMS332_CSR_A_PLAIN_SYNC;        // sync on green still produces picture
-    //CSRA |= IMS332_CSR_A_SEPARATE_SYNC;     // sync on green still produces picture
-    //CSRA |= IMS332_CSR_A_VIDEO_ONLY;
-
 	/* disable VTG */
 	ims332_write_register(regs, IMS332_REG_CSR_A, 0);
     usleep(100);
 
-    //B438 magic from f003e
+    //B438 magic from f003e (VRAM SRAM style=Split SAM, Sync on Green only, External pixel sampling mode)
 	ims332_write_register(regs, IMS332_REG_CSR_B, 0xb);
 
 
@@ -150,7 +142,23 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
-	ims332_write_register(regs, IMS332_REG_CSR_A, /*CSRA | IMS332_CSR_A_VTG_ENABLE*/0xb43011);
+    int CSRA = 0;
+    CSRA |= IMS332_CSR_A_DISABLE_CURSOR;
+    CSRA |= IMS332_BPP_8;
+    CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
+    CSRA |= IMS332_VRAM_INC_1024;
+    CSRA |= IMS332_CSR_A_PLAIN_SYNC;
+    CSRA |= IMS332_CSR_A_VTG_ENABLE;
+
+    //B43011
+    //101101000011000000010001
+    // enable VTG
+    // plain sync
+    // VRAM addr inc=11
+    // 18=interleaved pixel prot
+    // 20,21,22 BPP=011
+    // 23= disable cursor
+	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA);
 
 }
 
