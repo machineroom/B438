@@ -88,13 +88,20 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
     // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
     /* B438 TRAM derives clock from TRAM clock (5MHz) */
     int clock = 5;
-    assert (mon->frequency>clock*5);
-    assert (mon->frequency<clock*31);
-	ims332_write_register(regs, IMS332_REG_BOOT, mon->frequency/clock | IMS332_BOOT_CLOCK_PLL);
+    int pll_multiplier = mon->frequency/clock;
+    assert (pll_multiplier>=5);
+    assert (pll_multiplier<=31);
+	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
+
+    int CSRA = IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR | IMS332_CSR_A_DMA_DISABLE;   // sync on green
+    CSRA | IMS332_CSR_A_BLANK_DISABLE;
+    CSRA |= IMS332_CSR_A_CBLANK_IS_OUT;     // sync on green still produces picture
+    CSRA |= IMS332_CSR_A_PLAIN_SYNC;        // sync on green still produces picture
+    CSRA |= IMS332_CSR_A_SEPARATE_SYNC;     // sync on green still produces picture
+    //CSRA |= IMS332_CSR_A_VIDEO_ONLY;
 
 	/* initialize VTG */
-	ims332_write_register(regs, IMS332_REG_CSR_A,
-				IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR);
+	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA);
 	/* TODO delay(50);	/* spec does not say */
 
 	frontporch = mon->line_time - (mon->half_sync * 2 +
@@ -107,10 +114,27 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
     display = mon->frame_visible_width / 4;
     
     // as per Inmos graphics databook 2nd edition pp 154
-    if (display <= mon->line_time/2) {
+    /*if (display <= mon->line_time/2) {
         printf ("timing calc error (display = %d, line_time=%d(line_time/2=%d)\n", display, mon->line_time, mon->line_time/2);
         return;
-    }
+    }*/
+
+    printf ("programming G335 data path registers:\n");
+    printf ("\thalf_sync\t%d\n", mon->half_sync);
+    printf ("\tback_porch\t%d\n", mon->back_porch);
+    printf ("\tdisplay\t\t%d\n", display);
+    printf ("\tshortdisplay\t%d\n", shortdisplay);
+    printf ("\tbroadpulse\t%d\n", broadpulse);
+    printf ("\tv_sync\t\t%d\n", mon->v_sync * 2);
+    printf ("\tv_pre_equalize\t%d\n", mon->v_pre_equalize);
+    printf ("\tv_post_equalize\t%d\n", mon->v_post_equalize);
+    printf ("\tv_blank\t\t%d\n", mon->v_blank*2);
+    printf ("\tframe_visible_height\t%d\n", mon->frame_visible_height*2);
+    printf ("\tline_time\t%d\n", mon->line_time);
+    printf ("\tline_start\t%d\n", mon->line_start);
+    printf ("\tmem_init\t%d\n", mon->mem_init);
+    printf ("\txfer_delay\t%d\n", mon->xfer_delay);
+    
 
 	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
 	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
@@ -118,13 +142,10 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    shortdisplay);
 	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	broadpulse);
 	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync * 2);
-	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE,
-			      mon->v_pre_equalize);
-	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,
-			      mon->v_post_equalize);
+	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE, mon->v_pre_equalize);
+	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,mon->v_post_equalize);
 	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank * 2);
-	ims332_write_register( regs, IMS332_REG_V_DISPLAY,
-			      mon->frame_visible_height * 2);
+	ims332_write_register( regs, IMS332_REG_V_DISPLAY,      mon->frame_visible_height * 2);
 	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
 	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
 	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init);
@@ -134,8 +155,7 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 
 	//ims332_init_colormap( regs );
 
-	ims332_write_register(regs, IMS332_REG_CSR_A,
-		IMS332_BPP_8 | IMS332_CSR_A_DMA_DISABLE | IMS332_CSR_A_VTG_ENABLE);
+	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA | IMS332_CSR_A_VTG_ENABLE);
 
 }
 
@@ -168,20 +188,39 @@ int main(int argc, char **argv) {
 
     // VGA back_porch = 48
     // VGA front_porch = 16
+    //vga not working? no
     XFCB_MONITOR_TYPE vga = { (const char *)"VGA", 
                              25,        //frequency (MHz)
                              640,       //frame_visible_width (pixels)
                              480,       //frame_visible_height (pixels)
                              640,       //frame_scanline_width (pixels)
                              640,       //frame_width (pixels)
-                             96/2/4,    //half_sync (screen units) (VGA HSync=96 clocks)
-                             48/4,      //back_porch (screen units)
+                             96/2,    //half_sync (screen units) (VGA HSync=96 clocks)
+                             48,      //back_porch (screen units)
                              6,         //v_sync (lines)
                              2,         //v_pre_equalize (half lines)
                              2,         //v_post_equalize (half lines)
                              33,        //v_blank (lines)
-                             188,       //line_time (screen units) = half_sync + back_porch + display + front_porch
+                             200,       //line_time (screen units) = half_sync + back_porch + display + front_porch
                              16,        //line_start (screen units)
+                             10,        //mem_init (screen units)
+                             10         //xfer_delay (screen units)
+                            };
+
+    XFCB_MONITOR_TYPE vesa1280 = { (const char *)"1280", 
+                             108,        //frequency (MHz)
+                             1280,       //frame_visible_width (pixels)
+                             1024,       //frame_visible_height (pixels)
+                             1280,       //frame_scanline_width (pixels)
+                             1280,       //frame_width (pixels)
+                             112/2/4,    //half_sync (screen units) (VGA HSync=96 clocks)
+                             248/4,      //back_porch (screen units)
+                             3,         //v_sync (lines)
+                             2,         //v_pre_equalize (half lines)
+                             2,         //v_post_equalize (half lines)
+                             33,        //v_blank (lines)
+                             1688/4,       //line_time (screen units) = half_sync + back_porch + display + front_porch
+                             3,        //line_start (screen units)
                              10,        //mem_init (screen units)
                              10         //xfer_delay (screen units)
                             };
@@ -191,7 +230,7 @@ int main(int argc, char **argv) {
     rst_adpt();
 
     B438_reset_G335();
-    probe_ims332_init (0, &mon);
+    probe_ims332_init (0, &vesa1280);
 
     //B438 equipped with:
     // 8 * NEC B424400 DRAM 1Mb*4 bit = 4MB DRAM
