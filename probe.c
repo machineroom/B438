@@ -212,16 +212,16 @@ int main(int argc, char **argv) {
                              480,       //frame_visible_height (pixels)
                              640,       //frame_scanline_width (pixels)
                              640,       //frame_width (pixels)
-                             96/2,    //half_sync (screen units) (VGA HSync=96 clocks)
-                             48,      //back_porch (screen units)
-                             6,         //v_sync (lines)
-                             2,         //v_pre_equalize (half lines)
-                             2,         //v_post_equalize (half lines)
-                             33,        //v_blank (lines)
-                             200,       //line_time (screen units) = half_sync + back_porch + display + front_porch
+                             12,    //half_sync (screen units) (VGA HSync=96 clocks)
+                             12,      //back_porch (screen units)
+                             4,         //v_sync (lines)
+                             22,         //v_pre_equalize (half lines)
+                             4,         //v_post_equalize (half lines)
+                             64,        //v_blank (lines)
+                             198,       //line_time (screen units) = half_sync + back_porch + display + front_porch
                              16,        //line_start (screen units)
-                             10,        //mem_init (screen units)
-                             10         //xfer_delay (screen units)
+                             512,        //mem_init (screen units)
+                             1         //xfer_delay (screen units)
                             };
 
     XFCB_MONITOR_TYPE vesa1280 = { (const char *)"1280", 
@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
 
     B438_reset_G335();
     uint32_t regs = 0;
-    probe_ims332_init (regs, &vesa1280);
+    probe_ims332_init (regs, &vga);
 
     //B438 equipped with:
     // 8 * NEC B424400 DRAM 1Mb*4 bit = 4MB DRAM
