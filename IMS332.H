@@ -94,6 +94,7 @@ void ims332_cursor_sprite( ims332_padded_regmap_t regs, unsigned short *cursor);
 /* from xcfb code http://fxr.watson.org/fxr/source/chips/xcfb_monitor.h?v=MK84#L62*/
 typedef struct xcfb_monitor_type {
     char *name;
+    short frequency;            /* MHz */
     short frame_visible_width; /* pixels */
     short frame_visible_height;
     short frame_scanline_width;

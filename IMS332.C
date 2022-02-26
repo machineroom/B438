@@ -275,6 +275,9 @@ void ims332_init(regs, mon)
 	/* CLOCKIN appears to receive a 6.25 Mhz clock --> PLL 12 for 75Mhz monitor */
 	ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
 
+	/* B438 TRAM derives clock from TRAM clock (5MHz) --> PLL 5 for a 25MHz VGA monitor */
+	ims332_write_register(regs, IMS332_REG_BOOT, 5 | IMS332_BOOT_CLOCK_PLL);
+
 	/* initialize VTG */
 	ims332_write_register(regs, IMS332_REG_CSR_A,
 				IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR);

@@ -86,8 +86,11 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 	//ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
 
     // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
-    /* B438 TRAM derives clock from TRAM clock (5MHz) --> PLL 5 for a 75 MHz monitor */
-	ims332_write_register(regs, IMS332_REG_BOOT, 15 | IMS332_BOOT_CLOCK_PLL);
+    /* B438 TRAM derives clock from TRAM clock (5MHz) */
+    int clock = 5;
+    assert (mon->frequency>clock*5);
+    assert (mon->frequency<clock*31);
+	ims332_write_register(regs, IMS332_REG_BOOT, mon->frequency/clock | IMS332_BOOT_CLOCK_PLL);
 
 	/* initialize VTG */
 	ims332_write_register(regs, IMS332_REG_CSR_A,
@@ -156,7 +159,7 @@ int main(int argc, char **argv) {
     short xfer_delay;
     #endif
 
-    XFCB_MONITOR_TYPE mon = { (const char *)"VRM17", 1024, 768, 1024, 1024, 16, 33, 6, 2, 2, 21, 326, 16, 10, 10 };
+    XFCB_MONITOR_TYPE mon = { (const char *)"VRM17", 75, 1024, 768, 1024, 1024, 16, 33, 6, 2, 2, 21, 326, 16, 10, 10 };
     // line_time=326
     // 1024/4=256       (256)
     // back_porch = 33  (289)
@@ -166,6 +169,7 @@ int main(int argc, char **argv) {
     // VGA back_porch = 48
     // VGA front_porch = 16
     XFCB_MONITOR_TYPE vga = { (const char *)"VGA", 
+                             25,        //frequency (MHz)
                              640,       //frame_visible_width (pixels)
                              480,       //frame_visible_height (pixels)
                              640,       //frame_scanline_width (pixels)
