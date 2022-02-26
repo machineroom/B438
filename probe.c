@@ -84,15 +84,12 @@ void ims332_write_register(uint32_t regs, int regno, unsigned int val)
     poke (wptr, val);
 }
 
-static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
+static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 {
 	int shortdisplay;
 	int broadpulse;
 	int frontporch;
     int display;
-
-	/* CLOCKIN appears to receive a 6.25 Mhz clock --> PLL 12 for 75Mhz monitor */
-	//ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
 
     // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
     /* B438 TRAM derives clock from TRAM clock (5MHz) */
@@ -113,59 +110,43 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 
 	/* disable VTG */
 	ims332_write_register(regs, IMS332_REG_CSR_A, 0);
-	/* TODO delay(50);	/* spec does not say */
     usleep(100);
 
     //B438 magic from f003e
 	ims332_write_register(regs, IMS332_REG_CSR_B, 0xb);
 
 
-	frontporch = mon->line_time - (mon->half_sync * 2 +
-				       mon->back_porch +
-				       mon->frame_visible_width / 4);
-
-	shortdisplay = mon->line_time / 2 - (mon->half_sync * 2 +
-					     mon->back_porch + frontporch);
-	broadpulse = mon->line_time / 2 - frontporch;
-    display = mon->frame_visible_width / 4;
-    
-    // as per Inmos graphics databook 2nd edition pp 154
-    /*if (display <= mon->line_time/2) {
-        printf ("timing calc error (display = %d, line_time=%d(line_time/2=%d)\n", display, mon->line_time, mon->line_time/2);
-        return;
-    }*/
-
     printf ("programming G335 data path registers:\n");
+    printf ("\tline_time\t%d\n", mon->line_time);
     printf ("\thalf_sync\t%d\n", mon->half_sync);
     printf ("\tback_porch\t%d\n", mon->back_porch);
-    printf ("\tdisplay\t\t%d\n", display);
-    printf ("\tshortdisplay\t%d\n", shortdisplay);
-    printf ("\tbroadpulse\t%d\n", broadpulse);
-    printf ("\tv_sync\t\t%d\n", mon->v_sync * 2);
+    printf ("\tdisplay\t\t%d\n", mon->display);
+    printf ("\tshortdisplay\t%d\n", mon->short_display);
+    printf ("\tv_display\t%d\n", mon->v_display);
+    printf ("\tv_blank\t\t%d\n", mon->v_blank);
+    printf ("\tv_sync\t\t%d\n", mon->v_sync);
     printf ("\tv_pre_equalize\t%d\n", mon->v_pre_equalize);
     printf ("\tv_post_equalize\t%d\n", mon->v_post_equalize);
-    printf ("\tv_blank\t\t%d\n", mon->v_blank*2);
-    printf ("\tframe_visible_height\t%d\n", mon->frame_visible_height*2);
-    printf ("\tline_time\t%d\n", mon->line_time);
-    printf ("\tline_start\t%d\n", mon->line_start);
+    printf ("\tbroadpulse\t%d\n", mon->broad_pulse);
     printf ("\tmem_init\t%d\n", mon->mem_init);
     printf ("\txfer_delay\t%d\n", mon->xfer_delay);
+    printf ("\tline_start\t%ld\n", mon->line_start);
     
 
+	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
 	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
 	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
-	ims332_write_register( regs, IMS332_REG_DISPLAY,        display);
-	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    shortdisplay);
-	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	broadpulse);
-	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync * 2);
+	ims332_write_register( regs, IMS332_REG_DISPLAY,        mon->display);
+	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    mon->short_display);
+	ims332_write_register( regs, IMS332_REG_V_DISPLAY,      mon->v_display);
+	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank);
+	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync);
 	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE, mon->v_pre_equalize);
 	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,mon->v_post_equalize);
-	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank * 2);
-	ims332_write_register( regs, IMS332_REG_V_DISPLAY,      mon->frame_visible_height * 2);
-	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
-	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
+	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	mon->broad_pulse);
 	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init);
 	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay);
+	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
@@ -186,67 +167,42 @@ int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
     #if 0
-    short frame_visible_width; /* pixels */
-    short frame_visible_height;
-    short frame_scanline_width;
-    short frame_height;
-    short half_sync;        /* screen units (= 4 pixels) */
+    char *name;
+    short frequency;        /* dot clock MHz */
+    short line_time;        /* screen units (= 4 pixels) */
+    short half_sync;        
     short back_porch;
+    short display;
+    short short_display;
+    short v_display;
+    short v_blank;
     short v_sync;           /* lines */
     short v_pre_equalize;
     short v_post_equalize;
-    short v_blank;
-    short line_time;        /* screen units */
-    short line_start;
-    short mem_init;         
+    short broad_pulse;
+    short mem_init;
     short xfer_delay;
+    long  line_start;
     #endif
 
-    XFCB_MONITOR_TYPE mon = { (const char *)"VRM17", 75, 1024, 768, 1024, 1024, 16, 33, 6, 2, 2, 21, 326, 16, 10, 10 };
-    // line_time=326
-    // 1024/4=256       (256)
-    // back_porch = 33  (289)
-    // half_sync = 16 (305)
-    // 326-305 = 21 units for front_porch
-
-    // VGA back_porch = 48
-    // VGA front_porch = 16
-    //vga not working? no
-    XFCB_MONITOR_TYPE vga = { (const char *)"VGA", 
-                             25,        //frequency (MHz)
-                             640,       //frame_visible_width (pixels)
-                             480,       //frame_visible_height (pixels)
-                             640,       //frame_scanline_width (pixels)
-                             640,       //frame_width (pixels)
-                             12,    //half_sync (screen units) (VGA HSync=96 clocks)
-                             12,      //back_porch (screen units)
-                             2,         //v_sync (lines?)
-                             22,         //v_pre_equalize (half lines)
-                             4,         //v_post_equalize (half lines)
-                             32,        //v_blank (lines?)
-                             198,       //line_time (screen units) = half_sync + back_porch + display + front_porch
-                             16,        //line_start (screen units)
-                             512,        //mem_init (screen units)
-                             1         //xfer_delay (screen units)
-                            };
-
-    XFCB_MONITOR_TYPE vesa1280 = { (const char *)"1280", 
-                             108,        //frequency (MHz)
-                             1280,       //frame_visible_width (pixels)
-                             1024,       //frame_visible_height (pixels)
-                             1280,       //frame_scanline_width (pixels)
-                             1280,       //frame_width (pixels)
-                             112/2/4,    //half_sync (screen units) (VGA HSync=96 clocks)
-                             248/4,      //back_porch (screen units)
-                             3,         //v_sync (lines)
-                             2,         //v_pre_equalize (half lines)
-                             2,         //v_post_equalize (half lines)
-                             33,        //v_blank (lines)
-                             1688/4,       //line_time (screen units) = half_sync + back_porch + display + front_porch
-                             3,        //line_start (screen units)
-                             10,        //mem_init (screen units)
-                             10         //xfer_delay (screen units)
-                            };
+    MONITOR_TYPE vga = { 
+                        (const char *)"VGA", 
+                        25,        //frequency (MHz)
+                        198,
+                        12,
+                        12,
+                        160,
+                        62,
+                        960,
+                        64,
+                        4,
+                        22,
+                        4,
+                        75,
+                        512,
+                        1,
+                        0
+                       };
 
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     init_lkio();
@@ -283,13 +239,15 @@ int main(int argc, char **argv) {
     set_palette (regs, 0, 0, 0, 255);
     // 1 = red
     set_palette (regs, 1, 255, 0, 0);
-    // 255 = green
-    set_palette (regs, 255, 0, 255, 0);
+    // 2 = green
+    set_palette (regs, 2, 0, 255, 0);
+    // 3 = black
+    set_palette (regs, 3, 0, 0, 0);
 
-    int q=40000;
-    //poke_words(0x80400000, q, 0);
+    poke_words(0x80400000, 1000, 0x03030303);
     //sleep(20);
     //poke_words(0x80400000, q/2, 0x01010101);
+    poke_words(0x80400000,(640*2)/4,0x02020202);
     //test (0x80001000, 8*1024*1024);    // start of DRAM
     return(0);
 }

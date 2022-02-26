@@ -6,7 +6,7 @@
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
-all: main probe
+all: probe #main
 
 LSC89=${HOME}/lsc-V89.1
 LSC89_BIN=d:\exe

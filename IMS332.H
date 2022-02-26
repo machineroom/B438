@@ -91,29 +91,26 @@ void ims332_cursor_sprite( ims332_padded_regmap_t regs, unsigned short *cursor);
  * Initialization
  */
 
-/* from xcfb code http://fxr.watson.org/fxr/source/chips/xcfb_monitor.h?v=MK84#L62*/
-typedef struct xcfb_monitor_type {
+typedef struct monitor_type {
     char *name;
-    short frequency;            /* MHz */
-    short frame_visible_width; /* pixels */
-    short frame_visible_height;
-    short frame_scanline_width;
-    short frame_height;
-    short half_sync;        /* screen units (= 4 pixels) */
+    short frequency;        /* dot clock MHz */
+    short line_time;        /* screen units (= 4 pixels) */
+    short half_sync;        
     short back_porch;
+    short display;
+    short short_display;
+    short v_display;
+    short v_blank;
     short v_sync;           /* lines */
     short v_pre_equalize;
     short v_post_equalize;
-    short v_blank;
-    short line_time;        /* screen units */
-    short line_start;
+    short broad_pulse;
     short mem_init;
     short xfer_delay;
-} XFCB_MONITOR_TYPE;
+    long line_start;
+} MONITOR_TYPE;
 
-typedef XFCB_MONITOR_TYPE *xcfb_monitor_type_t;
-
-void ims332_init(ims332_padded_regmap_t regs, xcfb_monitor_type_t mon);
+void ims332_init(ims332_padded_regmap_t regs, MONITOR_TYPE *mon);
 
 
 /*
