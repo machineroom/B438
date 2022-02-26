@@ -59,11 +59,20 @@ void poke(uint32_t addr, uint32_t val) {
     word_out (val);
 }
 
+void poke_words(uint32_t addr, uint32_t count, uint32_t val) {
+    for (int i=0; i < count; i++) {
+        poke (addr, val);
+        addr += 4;
+    }
+}
+
+#define BOARD_REG_BASE 0x200000
+
 void B438_reset_G335(void) {
-    poke (0x7FF00000,0);
-    poke (0x7FF00000,1);
+    poke (BOARD_REG_BASE,0);
+    poke (BOARD_REG_BASE,1);
     usleep(1);
-    poke (0x7FF00000,0);
+    poke (BOARD_REG_BASE,0);
     usleep(1);  // >50ns
 }
 
@@ -94,8 +103,9 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
 
     int CSRA = IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR | IMS332_CSR_A_DMA_DISABLE;   // sync on green
-    CSRA | IMS332_CSR_A_BLANK_DISABLE;
-    CSRA |= IMS332_CSR_A_CBLANK_IS_OUT;     // sync on green still produces picture
+    CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
+    //CSRA | IMS332_CSR_A_BLANK_DISABLE;
+    //CSRA |= IMS332_CSR_A_CBLANK_IS_OUT;     // sync on green still produces picture
     CSRA |= IMS332_CSR_A_PLAIN_SYNC;        // sync on green still produces picture
     CSRA |= IMS332_CSR_A_SEPARATE_SYNC;     // sync on green still produces picture
     //CSRA |= IMS332_CSR_A_VIDEO_ONLY;
@@ -153,10 +163,17 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
-	//ims332_init_colormap( regs );
-
 	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA | IMS332_CSR_A_VTG_ENABLE);
 
+}
+
+void set_palette (uint32_t regs, int index, uint8_t red, uint8_t green, uint8_t blue) {
+    uint32_t red32 = red;
+    uint32_t green32 = green;
+    ims332_write_register(regs, IMS332_REG_LUT_BASE + (index & 0xff),
+                (red32 << 16) |
+                (green32 << 8) |
+                blue);
 }
 
 int main(int argc, char **argv) {
@@ -230,51 +247,42 @@ int main(int argc, char **argv) {
     rst_adpt();
 
     B438_reset_G335();
-    probe_ims332_init (0, &vesa1280);
+    uint32_t regs = 0;
+    probe_ims332_init (regs, &vesa1280);
 
     //B438 equipped with:
     // 8 * NEC B424400 DRAM 1Mb*4 bit = 4MB DRAM
     // 8 * NEC D482234 VRAM 256K*8 bit = 2MB VRAM
 
-    // B438 derived map:
+    // B438 'guessed' map:
     // G335          00000000-7FFFFFFF (!CS asserted on write)
     // memint        80000000-80000FFF
     // RAM           80001000-805FFFFF  (80001000 start of T805 external memory)    6MB DRAM+VRAM
     // DRAM+VRAM repeat in -ve memory (i.e 0x90001000..0xF0001000)
     // 335 reset reg 7FF00000 (0 reset low, 1 reset high - active high)
-    /*
-    uint32_t addr = 0x00000000;
-    for (int i=0; i < 16; i++) {
-      for (int j=0; j < 64*4; j += 4) {
-        poke (addr+j,0);
-        usleep(50*1000);
-        poke (addr+j,-1);
-        usleep(50*1000);
-      }
-      addr += 0x10000000;
+
+    // actual map (from F003e)
+    // VRAM 0x8040000 - 0x805FFFFF
+    // board control 0x2000000
+    // CVC (G335) 0x00000000
+
+
+    //setup colour palette
+    printf ("set palette\n");
+    //clear to grey
+    for (int i=0; i < 256; i++) {
+        set_palette (regs, i, 30, 30, 30);
     }
-    exit (0);
-    */
+    // 0 = blue
+    set_palette (regs, 0, 0, 0, 255);
+    // 1 = red
+    set_palette (regs, 1, 255, 0, 0);
+    // 255 = green
+    set_palette (regs, 255, 0, 255, 0);
 
-    /*uint32_t addr = 0x7FF00000;
-    for (int i=0; i < 16; i++) {
-      for (int j=0; j < 0xFFFF; j += 4) {
-        poke (addr+j,0);
-        usleep(1000*1000);
-        poke (addr+j,1);
-        usleep(1000*1000);
-      }
-      addr += 0x10000000;
-    }*/
-
-    int q=100*4096;
-    test (0x90000000, q);
-    test (0xA0000000, q);
-    test (0xB0000000, q);
-    test (0xC0000000, q);
-    test (0xD0000000, q);
-    test (0xE0000000, q);
-    test (0xF0000000, q);
+    int q=4000;
+    poke_words(0x80404000, q, 0x01010101);
+    poke_words(0x80504000, q, 0x01010101);
     //test (0x80001000, 8*1024*1024);    // start of DRAM
     return(0);
 }
