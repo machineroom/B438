@@ -261,21 +261,6 @@ void ims332_cursor_sprite( regs, cursor)
 			IMS332_REG_CURSOR_RAM+i, *cursor);
 }
 
-void B438_write_register (unsigned int *addr, unsigned int val) {
-	*addr = val;
-}
-
-void B438_reset(void) {
-	int i;
-	/*TEST ONLY for scope!*/
-	while (1) {
-	B438_write_register (B438_REG_7, 0);	/* assert 335 reset */
-	/* wait 20uS*/
-	for (i=0; i < 1000000; i++);
-	B438_write_register (B438_REG_7, 1);	/* deassert 335 reset */
-	}
-}
-
 /*
  * Initialization
  */

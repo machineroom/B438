@@ -91,11 +91,7 @@ void ims332_cursor_sprite( ims332_padded_regmap_t regs, unsigned short *cursor);
  * Initialization
  */
 
-// monitor config http://fxr.watson.org/fxr/source/chips/xcfb_hdw.c?v=MK84#L187
-//{ "VRM17", 1024, 768, 1024, 1024, 16, 33,
-//  176                   6, 2, 2, 21, 326, 16, 10, 10 },
-
-// from xcfb code http://fxr.watson.org/fxr/source/chips/xcfb_monitor.h?v=MK84#L62
+/* from xcfb code http://fxr.watson.org/fxr/source/chips/xcfb_monitor.h?v=MK84#L62*/
 typedef struct xcfb_monitor_type {
     char *name;
     short frame_visible_width; /* pixels */
@@ -110,7 +106,7 @@ typedef struct xcfb_monitor_type {
     short v_blank;
     short line_time;        /* screen units */
     short line_start;
-    short mem_init;         /* some units */
+    short mem_init;
     short xfer_delay;
 } XFCB_MONITOR_TYPE;
 

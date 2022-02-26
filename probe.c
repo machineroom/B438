@@ -52,7 +52,7 @@ int test(uint32_t addr, int count) {
     return 0;
 }
 
-int poke(uint32_t addr, uint32_t val) {
+void poke(uint32_t addr, uint32_t val) {
     printf ("poking 0x%X to 0x%X\n", val, addr);
     byte_out (0);  // poke
     word_out (addr);
@@ -80,16 +80,19 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 	int shortdisplay;
 	int broadpulse;
 	int frontporch;
+    int display;
 
 	/* CLOCKIN appears to receive a 6.25 Mhz clock --> PLL 12 for 75Mhz monitor */
-	ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
+	//ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
+
+    // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
+    /* B438 TRAM derives clock from TRAM clock (5MHz) --> PLL 5 for a 75 MHz monitor */
+	ims332_write_register(regs, IMS332_REG_BOOT, 15 | IMS332_BOOT_CLOCK_PLL);
 
 	/* initialize VTG */
 	ims332_write_register(regs, IMS332_REG_CSR_A,
 				IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR);
 	/* TODO delay(50);	/* spec does not say */
-
-	/* datapath registers (values taken from prom's settings) */
 
 	frontporch = mon->line_time - (mon->half_sync * 2 +
 				       mon->back_porch +
@@ -98,25 +101,31 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 	shortdisplay = mon->line_time / 2 - (mon->half_sync * 2 +
 					     mon->back_porch + frontporch);
 	broadpulse = mon->line_time / 2 - frontporch;
+    display = mon->frame_visible_width / 4;
+    
+    // as per Inmos graphics databook 2nd edition pp 154
+    if (display <= mon->line_time/2) {
+        printf ("timing calc error (display = %d, line_time=%d(line_time/2=%d)\n", display, mon->line_time, mon->line_time/2);
+        return;
+    }
 
 	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
 	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
-	ims332_write_register( regs, IMS332_REG_DISPLAY,
-			      mon->frame_visible_width / 4);
-	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	shortdisplay);
+	ims332_write_register( regs, IMS332_REG_DISPLAY,        display);
+	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    shortdisplay);
 	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	broadpulse);
-	ims332_write_register( regs, IMS332_REG_V_SYNC,		mon->v_sync * 2);
+	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync * 2);
 	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE,
 			      mon->v_pre_equalize);
 	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,
 			      mon->v_post_equalize);
-	ims332_write_register( regs, IMS332_REG_V_BLANK,	mon->v_blank * 2);
+	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank * 2);
 	ims332_write_register( regs, IMS332_REG_V_DISPLAY,
 			      mon->frame_visible_height * 2);
-	ims332_write_register( regs, IMS332_REG_LINE_TIME,	mon->line_time);
-	ims332_write_register( regs, IMS332_REG_LINE_START,	mon->line_start);
-	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	mon->mem_init);
-	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	mon->xfer_delay);
+	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
+	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
+	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init);
+	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay);
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
@@ -130,8 +139,48 @@ static void probe_ims332_init(uint32_t regs, xcfb_monitor_type_t mon)
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
+    #if 0
+    short frame_visible_width; /* pixels */
+    short frame_visible_height;
+    short frame_scanline_width;
+    short frame_height;
+    short half_sync;        /* screen units (= 4 pixels) */
+    short back_porch;
+    short v_sync;           /* lines */
+    short v_pre_equalize;
+    short v_post_equalize;
+    short v_blank;
+    short line_time;        /* screen units */
+    short line_start;
+    short mem_init;         
+    short xfer_delay;
+    #endif
 
     XFCB_MONITOR_TYPE mon = { (const char *)"VRM17", 1024, 768, 1024, 1024, 16, 33, 6, 2, 2, 21, 326, 16, 10, 10 };
+    // line_time=326
+    // 1024/4=256       (256)
+    // back_porch = 33  (289)
+    // half_sync = 16 (305)
+    // 326-305 = 21 units for front_porch
+
+    // VGA back_porch = 48
+    // VGA front_porch = 16
+    XFCB_MONITOR_TYPE vga = { (const char *)"VGA", 
+                             640,       //frame_visible_width (pixels)
+                             480,       //frame_visible_height (pixels)
+                             640,       //frame_scanline_width (pixels)
+                             640,       //frame_width (pixels)
+                             96/2/4,    //half_sync (screen units) (VGA HSync=96 clocks)
+                             48/4,      //back_porch (screen units)
+                             6,         //v_sync (lines)
+                             2,         //v_pre_equalize (half lines)
+                             2,         //v_post_equalize (half lines)
+                             33,        //v_blank (lines)
+                             188,       //line_time (screen units) = half_sync + back_porch + display + front_porch
+                             16,        //line_start (screen units)
+                             10,        //mem_init (screen units)
+                             10         //xfer_delay (screen units)
+                            };
 
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     init_lkio();
@@ -175,15 +224,14 @@ int main(int argc, char **argv) {
       addr += 0x10000000;
     }*/
 
-    /*test (0x90000000, 4);
-    test (0xA0000000, 4);
-    test (0xB0000000, 4);
-    test (0xC0000000, 4);
-    test (0xD0000000, 4);
-    test (0xE0000000, 4);
-    test (0xF0000000, 4);
-    test (0x80000000, 4096);    // internal memory
-    */
+    int q=100*4096;
+    test (0x90000000, q);
+    test (0xA0000000, q);
+    test (0xB0000000, q);
+    test (0xC0000000, q);
+    test (0xD0000000, q);
+    test (0xE0000000, q);
+    test (0xF0000000, q);
     //test (0x80001000, 8*1024*1024);    // start of DRAM
     return(0);
 }

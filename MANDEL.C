@@ -75,7 +75,7 @@ LOADGB *ld;
         ims332_padded_regmap_t regs = (ims332_padded_regmap_t)0x00000000;
         XFCB_MONITOR_TYPE mon;  
         struct vstate state;
-        B438_reset();
+        /*B438_reset();*/
         ims332_init(regs, &mon);
         state.regs = regs;
         ims332_video_on(&state);
