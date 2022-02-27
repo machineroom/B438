@@ -86,11 +86,6 @@ void ims332_write_register(uint32_t regs, int regno, unsigned int val)
 
 static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 {
-	int shortdisplay;
-	int broadpulse;
-	int frontporch;
-    int display;
-
     // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
     /* B438 TRAM derives clock from TRAM clock (5MHz) */
     int clock = 5;
