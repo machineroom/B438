@@ -153,8 +153,8 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
     CSRA |= IMS332_CSR_A_PLAIN_SYNC;
     CSRA |= IMS332_CSR_A_VTG_ENABLE;
 
-    //CSRA |= IMS332_CSR_A_SEPARATE_SYNC;
-    //CSRA |= IMS332_CSR_A_VIDEO_ONLY;
+    CSRA |= IMS332_CSR_A_SEPARATE_SYNC;
+    CSRA |= IMS332_CSR_A_VIDEO_ONLY;
 
     //B43011
     //101101000011000000010001
@@ -180,6 +180,27 @@ void set_palette (uint32_t regs, int index, uint8_t red, uint8_t green, uint8_t 
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
+
+    // from the f003e header. My old Dell LCD doesn't lock to this
+    MONITOR_TYPE g335_vga = { 
+                        (const char *)"G335 VGA", 
+                        25,        //frequency (MHz)
+                        198,
+                        12,
+                        12,
+                        160,
+                        62,
+                        960,
+                        64,
+                        4,
+                        22,
+                        4,
+                        75,
+                        512,
+                        1,
+                        0
+                       };
+
     #if 0
     char *name;
     short frequency;        /* dot clock MHz */
@@ -198,19 +219,19 @@ int main(int argc, char **argv) {
     short xfer_delay;
     long  line_start;
     #endif
-
+    // from the f003e header. My old Dell LCD does lock to this
     MONITOR_TYPE vga = { 
-                        (const char *)"VGA", 
+                        (const char *)"IBM VGA", 
                         25,        //frequency (MHz)
-                        198,
-                        12,
-                        12,
+                        202,
+                        8,
+                        20,
                         160,
-                        62,
+                        61,
                         960,
-                        64,
+                        80,
                         4,
-                        22,
+                        4,
                         4,
                         75,
                         512,
@@ -248,7 +269,6 @@ int main(int argc, char **argv) {
     // 0 = black
     set_palette (regs, 0, 0, 0, 0);
     // F = grey
-    //TODO something odd here - 0,0,0 produces a dirty green. Sync on green?
     set_palette (regs, 0xF, 40, 40, 40);
     // 1 = red
     set_palette (regs, 1, 255, 0, 0);
