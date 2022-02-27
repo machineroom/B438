@@ -266,10 +266,8 @@ int main(int argc, char **argv) {
 
     //setup colour palette
     printf ("set palette\n");
-    // 0 = black
-    set_palette (regs, 0, 0, 0, 0);
-    // F = grey
-    set_palette (regs, 0xF, 40, 40, 40);
+    // 0 = grey
+    set_palette (regs, 0, 20, 20, 20);
     // 1 = red
     set_palette (regs, 1, 255, 0, 0);
     // 2 = green
@@ -281,7 +279,7 @@ int main(int argc, char **argv) {
     // 5 = white
     set_palette (regs, 5, 255, 255, 255);
 
-    poke_words(0x80400000, 640*60, 0x0F0F0F0F);
+    poke_words(0x80400000, 640*480/4, 0);
     poke_words(0x80400000+(640*2*4),640/2,0x01010101);
     poke_words(0x80400000+(640*4*4),640/2,0x02020202);
     poke_words(0x80400000+(640*6*4),640/2,0x03030303);
