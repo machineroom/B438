@@ -96,12 +96,13 @@ LOADGB *ld;
     Channel *fd_out = ld->up_in-4;
     int cmd;
 
-    ChanOutInt(fd_out,1);
-    cmd = ChanInInt(fd_in);
+    ChanOutInt(fd_out,1);   /* 1 node */
+    /*ChanOutInt(fd_out,1);   /* 1 node */
+    /*cmd = ChanInInt(fd_in);
     if (cmd == 0x41)
     {
         ChanOutInt(fd_out,0x42);
-    }
+    }*/
 
     {
         /* address for memory mapped IMS335 on the B438 */
@@ -117,8 +118,8 @@ LOADGB *ld;
             m.red = m.green = m.blue = 255;
             ims332_load_colormap_entry( regs, 1, &m);
         }
-        set(0x80400000, 640*480/4, 0);
-        set(0x80400000, 640*100/4, 0x01010101);
+        set((int *)0x80400000, 640*480/4, 0);
+        set((int *)0x80400000, 640*100/4, 0x01010101);
     }
 }
 

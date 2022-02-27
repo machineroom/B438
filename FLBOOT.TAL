@@ -42,6 +42,7 @@
 	.val    LOCTOP,16
 
     ;this struct shared with flboot & ident & main mandel code - the order is important!
+	.val    ID,0
 	.val    MININT,1
 	.val    MEMSTART,2
 	.val    BOOTIN,3

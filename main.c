@@ -19,6 +19,8 @@
 #define TRUE 1
 #define FALSE 0
 
+/* HOST code */
+
 int load_buf(char *, int);
 void boot_transputer(void);
 
@@ -34,7 +36,7 @@ int main(int argc, char **argv) {
     if (FLAGS_verbose) {
         c011_dump_stats("done boot");
     }
-    if (word_out(0x41) != 0) {
+    /*if (word_out(0x41) != 0) {
         printf(" -- timeout sending 0x41 test\n");
         exit(1);           
     }
@@ -45,7 +47,7 @@ int main(int argc, char **argv) {
     }
     printf("\nfrom transputer code:");
     printf("\n\tword : 0x%X\n",test);
-    sleep(5);
+    sleep(5);*/
     return(0);
 }
 
@@ -65,6 +67,7 @@ void memdump (char *buf, int cnt) {
         }
         cnt--;
     }
+    printf ("%s\n", str);
 }
 
 #include "FLBOOT.ARR"
@@ -130,12 +133,15 @@ int load_buf (char *buf, int bcnt) {
     int wok;
     uint8_t len;
 
+    printf ("\ndump buffer that wil be sent to tranny\n");
+    memdump (buf, bcnt);
     do {
         len = (bcnt > 255) ? 255 : bcnt;
         bcnt -= len;
         wok = byte_out(len);
         while (len-- && wok==0) {
-            wok = byte_out((uint8_t)*buf++);
+            uint8_t byte = (uint8_t)*buf++;
+            wok = byte_out(byte);
         } 
     } while (bcnt && wok==0);
     if (wok) {
