@@ -259,7 +259,7 @@ int main(int argc, char **argv) {
     // 335 reset reg 7FF00000 (0 reset low, 1 reset high - active high)
 
     // actual map (from F003e)
-    // VRAM 0x8040000 - 0x805FFFFF
+    // VRAM 0x80400000 - 0x805FFFFF
     // board control 0x2000000
     // CVC (G335) 0x00000000
 

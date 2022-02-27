@@ -74,44 +74,30 @@
 
 unsigned int
 ims332_read_register(regs, regno)
-	unsigned char	*regs;
+	ims332_padded_regmap_t regs;
+	int regno;
 {
-	unsigned char		*rptr;
-	register unsigned int	val, v1;
-
-	/* spec sez: */
-	/*rptr = regs + 0x80000 + (regno << 4);*/
-	*rptr = regs + (regno << 4);
-	val = * ((volatile unsigned short *) rptr );
-	v1  = * ((volatile unsigned short *) regs );
-
-	return (val & 0xffff) | ((v1 & 0xff00) << 8);
+	ims332_padded_regmap_t rptr;
+	rptr = regs + (regno * 4);  /* 32 bit word addressing */
+	return *rptr;
 }
 
 void ims332_write_register(regs, regno, val)
-	unsigned char		*regs;
-	int regno;
+	ims332_padded_regmap_t regs;
+	int	regno;
 	register unsigned int	val;
 {
-	unsigned char		*wptr;
-
-	/* spec sez: */
-	/*wptr = regs + 0xa0000 + (regno << 4);*/
-	wptr = regs + (regno << 4);
-	* ((volatile unsigned int *)(regs))   = (val >> 8) & 0xff00;
-	* ((volatile unsigned short *)(wptr)) = val;
+	ims332_padded_regmap_t wptr;
+	wptr = regs + (regno * 4);  /* 32 bit word addressing */
+    *wptr = val;
 }
-
-/* Looks like this uses the subsystem port on the T805 to reset the 332 */
-#define	assert_ims332_reset_bit(r)	*r &= ~0x40
-#define	deassert_ims332_reset_bit(r)	*r |=  0x40
 
 /*
  * Color map
  */
 void ims332_load_colormap( regs, map)
 	ims332_padded_regmap_t	regs;
-	color_map_t	*map;
+	color_map_t				*map;
 {
 	register int    i;
 
@@ -124,46 +110,10 @@ void ims332_load_colormap_entry( regs, entry_, map)
 	int entry_;
 	color_map_t	*map;
 {
-	/* ?? stop VTG */
 	ims332_write_register(regs, IMS332_REG_LUT_BASE + (entry_ & 0xff),
 			      (map->blue << 16) |
 			      (map->green << 8) |
 			      (map->red));
-}
-
-void ims332_init_colormap( regs)
-	ims332_padded_regmap_t	regs;
-{
-	color_map_t	m;
-
-	m.red = m.green = m.blue = 0;
-	ims332_load_colormap_entry( regs, 0, &m);
-
-	m.red = m.green = m.blue = 0xff;
-	ims332_load_colormap_entry( regs, 1, &m);
-	ims332_load_colormap_entry( regs, 255, &m);
-
-	/* since we are at it, also fix cursor LUT */
-	ims332_load_colormap_entry( regs, IMS332_REG_CURSOR_LUT_0, &m);
-	ims332_load_colormap_entry( regs, IMS332_REG_CURSOR_LUT_1, &m);
-	/* *we* do not use this, but the prom does */
-	ims332_load_colormap_entry( regs, IMS332_REG_CURSOR_LUT_2, &m);
-}
-
-void ims332_print_colormap( regs)
-	ims332_padded_regmap_t	regs;
-{
-	register int    i;
-
-	for (i = 0; i < 256; i++) {
-		register unsigned int	color;
-
-		color = ims332_read_register( regs, IMS332_REG_LUT_BASE + i);
-		/*printf("%x->[x%x x%x x%x]\n", i,
-			(color >> 16) & 0xff,
-			(color >> 8) & 0xff,
-			color & 0xff);*/
-	}
 }
 
 /*
@@ -179,11 +129,6 @@ void ims332_video_off(vstate)
 
 	if (vstate->off)
 		return;
-
-	/* Yes, this is awful */
-	/*save = (unsigned *)up->dev_dep_2.gx.colormap;
-
-	*save = ims332_read_register(regs, IMS332_REG_LUT_BASE);*/
 
 	ims332_write_register(regs, IMS332_REG_LUT_BASE, 0);
 
@@ -205,11 +150,6 @@ void ims332_video_on(vstate)
 
 	if (!vstate->off)
 		return;
-
-	/* Like I said.. */
-	/*save = (unsigned *)up->dev_dep_2.gx.colormap;
-
-	ims332_write_register(regs, IMS332_REG_LUT_BASE, *save);*/
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffffff);
 
@@ -261,62 +201,72 @@ void ims332_cursor_sprite( regs, cursor)
 			IMS332_REG_CURSOR_RAM+i, *cursor);
 }
 
-/*
- * Initialization
- */
+void pretend_usleep(delay) 
+	int delay;
+{
+	int i;
+	for (i=0; i < 10000*delay; i++);
+}
+
 void ims332_init(regs, mon)
 	ims332_padded_regmap_t	regs;
-	xcfb_monitor_type_t	mon;
+	MONITOR_TYPE *mon;
 {
-	int shortdisplay;
-	int broadpulse;
-	int frontporch;
+	int CSRA = 0;
 
-	/* CLOCKIN appears to receive a 6.25 Mhz clock --> PLL 12 for 75Mhz monitor */
-	ims332_write_register(regs, IMS332_REG_BOOT, 12 | IMS332_BOOT_CLOCK_PLL);
+    /* PLL multipler in bits 0..4 (values from 5 to 31 allowed) */
+    /* B438 TRAM derives clock from TRAM clock (5MHz) */
+    int clock = 5;
+    int pll_multiplier = mon->frequency/clock;
+	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
+    pretend_usleep(100);
 
-	/* B438 TRAM derives clock from TRAM clock (5MHz) --> PLL 5 for a 25MHz VGA monitor */
-	ims332_write_register(regs, IMS332_REG_BOOT, 5 | IMS332_BOOT_CLOCK_PLL);
+	/* disable VTG */
+	ims332_write_register(regs, IMS332_REG_CSR_A, 0);
+    pretend_usleep(100);
 
-	/* initialize VTG */
-	ims332_write_register(regs, IMS332_REG_CSR_A,
-				IMS332_BPP_8 | IMS332_CSR_A_DISABLE_CURSOR);
-	/* TODO delay(50);	/* spec does not say */
+    /*
+	B438 magic from f003e
+        0x08 = VRAM SRAM style=Split SAM
+        0x02 = Sync on Green only
+        0x01 = External pixel sampling mode)
+	*/
+	ims332_write_register(regs, IMS332_REG_CSR_B, 0xb);
 
-	/* datapath registers (values taken from prom's settings) */
-
-	frontporch = mon->line_time - (mon->half_sync * 2 +
-				       mon->back_porch +
-				       mon->frame_visible_width / 4);
-
-	shortdisplay = mon->line_time / 2 - (mon->half_sync * 2 +
-					     mon->back_porch + frontporch);
-	broadpulse = mon->line_time / 2 - frontporch;
-
+	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
 	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
 	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
-	ims332_write_register( regs, IMS332_REG_DISPLAY,
-			      mon->frame_visible_width / 4);
-	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	shortdisplay);
-	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	broadpulse);
-	ims332_write_register( regs, IMS332_REG_V_SYNC,		mon->v_sync * 2);
-	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE,
-			      mon->v_pre_equalize);
-	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,
-			      mon->v_post_equalize);
-	ims332_write_register( regs, IMS332_REG_V_BLANK,	mon->v_blank * 2);
-	ims332_write_register( regs, IMS332_REG_V_DISPLAY,
-			      mon->frame_visible_height * 2);
-	ims332_write_register( regs, IMS332_REG_LINE_TIME,	mon->line_time);
-	ims332_write_register( regs, IMS332_REG_LINE_START,	mon->line_start);
-	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	mon->mem_init);
-	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	mon->xfer_delay);
+	ims332_write_register( regs, IMS332_REG_DISPLAY,        mon->display);
+	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    mon->short_display);
+	ims332_write_register( regs, IMS332_REG_V_DISPLAY,      mon->v_display);
+	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank);
+	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync);
+	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE, mon->v_pre_equalize);
+	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,mon->v_post_equalize);
+	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	mon->broad_pulse);
+	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init);
+	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay);
+	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
-	ims332_init_colormap( regs );
+    CSRA |= IMS332_CSR_A_DISABLE_CURSOR;
+    CSRA |= IMS332_BPP_8;
+    CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
+    CSRA |= IMS332_VRAM_INC_1024;
+    CSRA |= IMS332_CSR_A_PLAIN_SYNC;
+    CSRA |= IMS332_CSR_A_VTG_ENABLE;
 
-	ims332_write_register(regs, IMS332_REG_CSR_A,
-		IMS332_BPP_8 | IMS332_CSR_A_DMA_DISABLE | IMS332_CSR_A_VTG_ENABLE);
+    CSRA |= IMS332_CSR_A_SEPARATE_SYNC;
+    CSRA |= IMS332_CSR_A_VIDEO_ONLY;
 
+	ims332_write_register(regs, IMS332_REG_CSR_A, CSRA);
+}
+
+void B438_reset_G335(void) {
+	int *reset_reg = (int *)BOARD_REG_BASE;
+    *reset_reg = 0;
+    *reset_reg = 1;
+    pretend_usleep(1);
+    *reset_reg = 0;
 }

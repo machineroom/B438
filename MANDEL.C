@@ -53,8 +53,41 @@ typedef struct {
     void *trantype;
 } LOADGB;
 
-/*}}}  */
-/*{{{  main(...)*/
+/* from the f003e header. My old Dell LCD does lock to this */
+MONITOR_TYPE vga = { 
+                    "IBM VGA", 
+                    25,
+                    202,
+                    8,
+                    20,
+                    160,
+                    61,
+                    960,
+                    80,
+                    4,
+                    4,
+                    4,
+                    75,
+                    512,
+                    1,
+                    0
+                    };
+
+
+/*
+B438 map (from F003e)
+VRAM 0x80400000 - 0x805FFFFF
+board control 0x2000000
+CVC (G335) 0x00000000
+*/
+
+void set(int *addr, int count, int val) {
+    int i;
+    for (i=0; i < count; i++) {
+        *addr = val;
+        addr += 4;
+    }
+}
 
 main(ld)
 LOADGB *ld;
@@ -71,14 +104,21 @@ LOADGB *ld;
     }
 
     {
-        /* address for memory mapped IMS332 (assuming the B438 is anything like the B437) */
+        /* address for memory mapped IMS335 on the B438 */
         ims332_padded_regmap_t regs = (ims332_padded_regmap_t)0x00000000;
-        XFCB_MONITOR_TYPE mon;  
         struct vstate state;
-        /*B438_reset();*/
-        ims332_init(regs, &mon);
-        state.regs = regs;
-        ims332_video_on(&state);
+        B438_reset_G335();
+        ims332_init(regs, &vga);
+        {
+
+            color_map_t m;
+            m.red = m.green = m.blue = 0;
+            ims332_load_colormap_entry( regs, 0, &m);
+            m.red = m.green = m.blue = 255;
+            ims332_load_colormap_entry( regs, 1, &m);
+        }
+        set(0x80400000, 640*480/4, 0);
+        set(0x80400000, 640*100/4, 0x01010101);
     }
 }
 

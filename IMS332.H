@@ -52,12 +52,11 @@
 /*LSC89 compiler*/
 #define volatile
 
-typedef volatile unsigned char *ims332_padded_regmap_t;
+typedef volatile int *ims332_padded_regmap_t;
 
 /*
  * Color map
  */
-/* JamesW guess at this */
 typedef struct {
     unsigned char red;
     unsigned char green;
@@ -66,8 +65,6 @@ typedef struct {
 
 void ims332_load_colormap(ims332_padded_regmap_t regs, color_map_t	*map);
 void ims332_load_colormap_entry(ims332_padded_regmap_t regs, int entry_, color_map_t *map);
-void ims332_init_colormap(ims332_padded_regmap_t regs);
-void ims332_print_colormap(ims332_padded_regmap_t regs);
 
 /*
  * Video on/off
@@ -112,6 +109,8 @@ typedef struct monitor_type {
 
 void ims332_init(ims332_padded_regmap_t regs, MONITOR_TYPE *mon);
 
+#define BOARD_REG_BASE 0x200000
+void B438_reset_G335(void);
 
 /*
  * Although the chip is built to be memory-mapped
