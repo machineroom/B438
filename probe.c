@@ -53,7 +53,7 @@ int test(uint32_t addr, int count) {
 }
 
 void poke(uint32_t addr, uint32_t val) {
-    printf ("poking 0x%X to 0x%X\n", val, addr);
+    //printf ("poking 0x%X to 0x%X\n", val, addr);
     byte_out (0);  // poke
     word_out (addr);
     word_out (val);
@@ -81,6 +81,7 @@ void ims332_write_register(uint32_t regs, int regno, unsigned int val)
 	uint32_t wptr;
 
 	wptr = regs + (regno * 4);  //32 bit word addressing
+	printf ("reg 0x%02X = %08X\n", regno, val);
     poke (wptr, val);
 }
 
@@ -142,7 +143,8 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 
     int CSRA = 0;
     CSRA |= IMS332_CSR_A_DISABLE_CURSOR;
-    CSRA |= IMS332_BPP_8;
+    //CSRA |= IMS332_BPP_16;
+    CSRA |= IMS335_BPP_24;
     CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
     CSRA |= IMS332_VRAM_INC_1024;
     CSRA |= IMS332_CSR_A_PLAIN_SYNC;
@@ -259,10 +261,11 @@ int main(int argc, char **argv) {
     // CVC (G335) 0x00000000
 
 
+    /*
     //setup colour palette
     printf ("set palette\n");
     // 0 = grey
-    set_palette (regs, 0, 20, 20, 20);
+    set_palette (regs, 0, 255, 255, 0);
     // 1 = red
     set_palette (regs, 1, 255, 0, 0);
     // 2 = green
@@ -273,13 +276,33 @@ int main(int argc, char **argv) {
     set_palette (regs, 4, 255, 255, 0);
     // 5 = white
     set_palette (regs, 5, 255, 255, 255);
+    // 8 = white
+    set_palette (regs, 8, 255, 255, 255);
+    // 0x80 = blue
+    set_palette (regs, 0x80, 0, 0, 255);
+    */
+    
+    // in true colour modes the palette acts as a gamma correction table. Obvs.
+    printf ("set nil gamma correction\n");
+    for (int i=0; i < 256; i++) {
+      set_palette (regs, i, i,i,i);
+    }
 
-    poke_words(0x80400000, 640*480/4, 0);
+    /*poke_words(0x80400000, 640*480/4, 0);
     poke_words(0x80400000+(640*2*4),640/2,0x01010101);
     poke_words(0x80400000+(640*4*4),640/2,0x02020202);
     poke_words(0x80400000+(640*6*4),640/2,0x03030303);
     poke_words(0x80400000+(640*8*4),640/2,0x04040404);
-    poke_words(0x80400000+(640*10*4),640/2,0x05050505);
+    poke_words(0x80400000+(640*10*4),640/2,0x05050505);*/
+    /* 16 bpp 
+    poke_words(0x80400000, 640*480/2, 0); //16bpp black
+    poke_words(0x80400000, 120*480/2, 0x001F001F); //16bpp blue
+    poke_words(0x80400000+640*480/2, 120*480/2, 0x07E007E0); //16bpp green
+    */
+    poke_words(0x80400000, 640*480, 0x00000000); //32bpp black
+    poke_words(0x80400000, 640*100, 0x00FF0000); //32bpp red
+    poke_words(0x80400000+640*100, 640*100, 0x0000FF00); //32bpp green
+    poke_words(0x80400000+640*200, 640*100, 0x000000FF); //32bpp blue
     return(0);
 }
 
