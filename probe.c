@@ -85,15 +85,20 @@ void ims332_write_register(uint32_t regs, int regno, unsigned int val)
     poke (wptr, val);
 }
 
-static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
+static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon, bool TwentyFourBPPmode)
 {
     // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
     /* B438 TRAM derives clock from TRAM clock (5MHz) */
     int clock = 5;
     int pll_multiplier = mon->frequency/clock;
+    int su_multiplier = 1;
+    if (TwentyFourBPPmode) {
+      su_multiplier = 2;
+      pll_multiplier *= 2;
+    }
     assert (pll_multiplier>=5);
     assert (pll_multiplier<=31);
-	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
+    ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
     usleep(100);
 
 	/* disable VTG */
@@ -124,26 +129,25 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
     printf ("\tline_start\t%ld\n", mon->line_start);
     
 
-	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
-	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
-	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
-	ims332_write_register( regs, IMS332_REG_DISPLAY,        mon->display);
-	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    mon->short_display);
+	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_DISPLAY,        mon->display * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    mon->short_display * su_multiplier);
 	ims332_write_register( regs, IMS332_REG_V_DISPLAY,      mon->v_display);
 	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank);
 	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync);
 	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE, mon->v_pre_equalize);
 	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,mon->v_post_equalize);
-	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	mon->broad_pulse);
-	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init);
-	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay);
-	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
+	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	mon->broad_pulse * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay * su_multiplier);
+	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start * su_multiplier);
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
     int CSRA = 0;
     CSRA |= IMS332_CSR_A_DISABLE_CURSOR;
-    //CSRA |= IMS332_BPP_16;
     CSRA |= IMS335_BPP_24;
     CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
     CSRA |= IMS332_VRAM_INC_1024;
@@ -178,62 +182,24 @@ int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
 
-    // from the f003e header. My old Dell LCD doesn't lock to this
-    MONITOR_TYPE g335_vga = { 
-                        (const char *)"G335 VGA", 
-                        25,        //frequency (MHz)
-                        198,
-                        12,
-                        12,
-                        160,
-                        62,
-                        960,
-                        64,
-                        4,
-                        22,
-                        4,
-                        75,
-                        512,
-                        1,
-                        0
-                       };
-
-    #if 0
-    char *name;
-    short frequency;        /* dot clock MHz */
-    short line_time;        /* screen units (= 4 pixels) */
-    short half_sync;        
-    short back_porch;
-    short display;
-    short short_display;
-    short v_display;
-    short v_blank;
-    short v_sync;           /* lines */
-    short v_pre_equalize;
-    short v_post_equalize;
-    short broad_pulse;
-    short mem_init;
-    short xfer_delay;
-    long  line_start;
-    #endif
     // from the f003e header. My old Dell LCD does lock to this
     MONITOR_TYPE vga = { 
                         (const char *)"IBM VGA", 
-                        25,        //frequency (MHz)
-                        202,
-                        8,
-                        20,
-                        160,
-                        61,
-                        960,
-                        80,
-                        4,
-                        4,
-                        4,
-                        75,
-                        512,
-                        1,
-                        0
+                        25,     // frequency (MHz)
+                        202,    // line time (SU)
+                        8,      // half sync (SU)
+                        20,     // back porch (SU)  
+                        160,    // display (SU)
+                        61,     // short display (SU)
+                        960,    // v_dsplay (half lines)
+                        80,     // v_blank (half lines)
+                        4,      // v_sync (half lines)
+                        4,      // v_pre_equalize (half lines)
+                        4,      // v_post_equalize (half lines)
+                        75,     // broad pulse (SU)
+                        128,    // mem init
+                        1,      // xfer_delay
+                        0       // line_start
                        };
 
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -242,18 +208,11 @@ int main(int argc, char **argv) {
 
     B438_reset_G335();
     uint32_t regs = 0;
-    probe_ims332_init (regs, &vga);
+    probe_ims332_init (regs, &vga, true);
 
     //B438 equipped with:
     // 8 * NEC B424400 DRAM 1Mb*4 bit = 4MB DRAM
     // 8 * NEC D482234 VRAM 256K*8 bit = 2MB VRAM
-
-    // B438 'guessed' map:
-    // G335          00000000-7FFFFFFF (!CS asserted on write)
-    // memint        80000000-80000FFF
-    // RAM           80001000-805FFFFF  (80001000 start of T805 external memory)    6MB DRAM+VRAM
-    // DRAM+VRAM repeat in -ve memory (i.e 0x90001000..0xF0001000)
-    // 335 reset reg 7FF00000 (0 reset low, 1 reset high - active high)
 
     // actual map (from F003e)
     // VRAM 0x80400000 - 0x805FFFFF
@@ -299,10 +258,16 @@ int main(int argc, char **argv) {
     poke_words(0x80400000, 120*480/2, 0x001F001F); //16bpp blue
     poke_words(0x80400000+640*480/2, 120*480/2, 0x07E007E0); //16bpp green
     */
-    poke_words(0x80400000, 640*480, 0x00000000); //32bpp black
-    poke_words(0x80400000, 640*100, 0x00FF0000); //32bpp red
-    poke_words(0x80400000+640*100, 640*100, 0x0000FF00); //32bpp green
-    poke_words(0x80400000+640*200, 640*100, 0x000000FF); //32bpp blue
+    uint32_t base = 0x80400000;
+    poke_words(base, 640*480, 0x00000000); //32bpp black
+    uint32_t ptr = base;
+    poke_words(ptr, 640, 0x00FFFF00); //32bpp yellow
+    ptr += 640*4;
+    poke_words(ptr, 100, 0x00FF0000); //32bpp red
+    ptr += 100*4;
+    poke_words(ptr, 100, 0x0000FF00);// green
+    ptr += 100*4;
+    poke_words(ptr, 100, 0x000000FF);// blue
     return(0);
 }
 
