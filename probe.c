@@ -53,7 +53,7 @@ int test(uint32_t addr, int count) {
 }
 
 void poke(uint32_t addr, uint32_t val) {
-    printf ("poking 0x%X to 0x%X\n", val, addr);
+    //printf ("poking 0x%X to 0x%X\n", val, addr);
     byte_out (0);  // poke
     word_out (addr);
     word_out (val);
@@ -90,8 +90,7 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
     /* B438 TRAM derives clock from TRAM clock (5MHz) */
     int clock = 5;
     int pll_multiplier = mon->frequency/clock;
-    assert (pll_multiplier>=5);
-    assert (pll_multiplier<=31);
+    pll_multiplier *= 2;//24bpp interleaved mode -> clock=2*dot rate
 	ims332_write_register(regs, IMS332_REG_BOOT, pll_multiplier | IMS332_BOOT_CLOCK_PLL);
     usleep(100);
 
@@ -123,31 +122,30 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
     printf ("\tline_start\t%ld\n", mon->line_start);
     
 
-	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time);
-	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync);
-	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch);
-	ims332_write_register( regs, IMS332_REG_DISPLAY,        mon->display);
-	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    mon->short_display);
+	ims332_write_register( regs, IMS332_REG_LINE_TIME,	    mon->line_time*2);
+	ims332_write_register( regs, IMS332_REG_HALF_SYNCH,     mon->half_sync*2);
+	ims332_write_register( regs, IMS332_REG_BACK_PORCH,     mon->back_porch*2);
+	ims332_write_register( regs, IMS332_REG_DISPLAY,        mon->display*2);
+	ims332_write_register( regs, IMS332_REG_SHORT_DIS,	    mon->short_display*2);
 	ims332_write_register( regs, IMS332_REG_V_DISPLAY,      mon->v_display);
 	ims332_write_register( regs, IMS332_REG_V_BLANK,	    mon->v_blank);
 	ims332_write_register( regs, IMS332_REG_V_SYNC,		    mon->v_sync);
 	ims332_write_register( regs, IMS332_REG_V_PRE_EQUALIZE, mon->v_pre_equalize);
 	ims332_write_register( regs, IMS332_REG_V_POST_EQUALIZE,mon->v_post_equalize);
-	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	mon->broad_pulse);
-	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init);
-	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay);
-	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start);
+	ims332_write_register( regs, IMS332_REG_BROAD_PULSE,	mon->broad_pulse*2);
+	ims332_write_register( regs, IMS332_REG_MEM_INIT, 	    mon->mem_init*2);
+	ims332_write_register( regs, IMS332_REG_XFER_DELAY,	    mon->xfer_delay*2);
+	ims332_write_register( regs, IMS332_REG_LINE_START,	    mon->line_start*2);
 
 	ims332_write_register( regs, IMS332_REG_COLOR_MASK, 0xffffff);
 
     int CSRA = 0;
     CSRA |= IMS332_CSR_A_DISABLE_CURSOR;
-    CSRA |= IMS332_BPP_8;
+    CSRA |= IMS335_BPP_24;
     CSRA |= IMS332_CSR_A_PIXEL_INTERLEAVE;
     CSRA |= IMS332_VRAM_INC_1024;
     CSRA |= IMS332_CSR_A_PLAIN_SYNC;
     CSRA |= IMS332_CSR_A_VTG_ENABLE;
-
     CSRA |= IMS332_CSR_A_SEPARATE_SYNC;
     CSRA |= IMS332_CSR_A_VIDEO_ONLY;
 
@@ -176,44 +174,6 @@ int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
 
-    // from the f003e header. My old Dell LCD doesn't lock to this
-    MONITOR_TYPE g335_vga = { 
-                        (const char *)"G335 VGA", 
-                        25,        //frequency (MHz)
-                        198,
-                        12,
-                        12,
-                        160,
-                        62,
-                        960,
-                        64,
-                        4,
-                        22,
-                        4,
-                        75,
-                        512,
-                        1,
-                        0
-                       };
-
-    #if 0
-    char *name;
-    short frequency;        /* dot clock MHz */
-    short line_time;        /* screen units (= 4 pixels) */
-    short half_sync;        
-    short back_porch;
-    short display;
-    short short_display;
-    short v_display;
-    short v_blank;
-    short v_sync;           /* lines */
-    short v_pre_equalize;
-    short v_post_equalize;
-    short broad_pulse;
-    short mem_init;
-    short xfer_delay;
-    long  line_start;
-    #endif
     // from the f003e header. My old Dell LCD does lock to this
     MONITOR_TYPE vga = { 
                         (const char *)"IBM VGA", 
@@ -229,7 +189,7 @@ int main(int argc, char **argv) {
                         4,
                         4,
                         75,
-                        512,
+                        128,
                         1,
                         0
                        };
@@ -242,44 +202,11 @@ int main(int argc, char **argv) {
     uint32_t regs = 0;
     probe_ims332_init (regs, &vga);
 
-    //B438 equipped with:
-    // 8 * NEC B424400 DRAM 1Mb*4 bit = 4MB DRAM
-    // 8 * NEC D482234 VRAM 256K*8 bit = 2MB VRAM
-
-    // B438 'guessed' map:
-    // G335          00000000-7FFFFFFF (!CS asserted on write)
-    // memint        80000000-80000FFF
-    // RAM           80001000-805FFFFF  (80001000 start of T805 external memory)    6MB DRAM+VRAM
-    // DRAM+VRAM repeat in -ve memory (i.e 0x90001000..0xF0001000)
-    // 335 reset reg 7FF00000 (0 reset low, 1 reset high - active high)
-
-    // actual map (from F003e)
-    // VRAM 0x80400000 - 0x805FFFFF
-    // board control 0x2000000
-    // CVC (G335) 0x00000000
-
-
-    //setup colour palette
-    printf ("set palette\n");
-    // 0 = grey
-    set_palette (regs, 0, 20, 20, 20);
-    // 1 = red
-    set_palette (regs, 1, 255, 0, 0);
-    // 2 = green
-    set_palette (regs, 2, 0, 255, 0);
-    // 3 = blue
-    set_palette (regs, 3, 0, 0, 255);
-    // 4 = yellow
-    set_palette (regs, 4, 255, 255, 0);
-    // 5 = white
-    set_palette (regs, 5, 255, 255, 255);
-
-    poke_words(0x80400000, 640*480/4, 0);
-    poke_words(0x80400000+(640*2*4),640/2,0x01010101);
-    poke_words(0x80400000+(640*4*4),640/2,0x02020202);
-    poke_words(0x80400000+(640*6*4),640/2,0x03030303);
-    poke_words(0x80400000+(640*8*4),640/2,0x04040404);
-    poke_words(0x80400000+(640*10*4),640/2,0x05050505);
+    poke_words(0x80400000, 640*480, 0);
+    poke_words(0x80400000,640*20,0xFF);//blue
+    poke_words(0x80400000+(640*20*4),640*20,0xFF00);//green
+    poke_words(0x80400000+(640*40*4),640*20,0xFF0000);//red
+    poke_words(0x80400000+(640*60*4),640*20,0xFF00FF);//pink
     return(0);
 }
 
