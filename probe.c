@@ -260,26 +260,22 @@ int main(int argc, char **argv) {
 
 
     //setup colour palette
-    printf ("set palette\n");
-    // 0 = grey
-    set_palette (regs, 0, 20, 20, 20);
-    // 1 = red
-    set_palette (regs, 1, 255, 0, 0);
-    // 2 = green
-    set_palette (regs, 2, 0, 255, 0);
-    // 3 = blue
-    set_palette (regs, 3, 0, 0, 255);
-    // 4 = yellow
-    set_palette (regs, 4, 255, 255, 0);
-    // 5 = white
-    set_palette (regs, 5, 255, 255, 255);
-
-    poke_words(0x80400000, 640*480/4, 0);
-    poke_words(0x80400000+(640*2*4),640/2,0x01010101);
-    poke_words(0x80400000+(640*4*4),640/2,0x02020202);
-    poke_words(0x80400000+(640*6*4),640/2,0x03030303);
-    poke_words(0x80400000+(640*8*4),640/2,0x04040404);
-    poke_words(0x80400000+(640*10*4),640/2,0x05050505);
+    /* a somewhat satisfying, but very ripped off palette */
+    uint32_t a = 0x80400000;
+    int r,g,b;
+    uint32_t c=0;
+    for (i = 0; i < 256; i++)
+    {
+        r = 13*(256-i) % 256;
+        g = 7*(256-i) % 256;
+        b = 11*(256-i) % 256;
+        set_palette(0,i,r,g,b);
+    }
+    for (i=0; i<240; i++) {
+        poke_words(a, 640*2, c);
+        a += 640*2;
+        c += 0x01010101;
+    }
     return(0);
 }
 
