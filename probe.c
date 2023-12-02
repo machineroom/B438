@@ -84,6 +84,15 @@ void ims332_write_register(uint32_t regs, int regno, unsigned int val)
     poke (wptr, val);
 }
 
+void ims332_write_pal(uint32_t regs, int regno, int entry, unsigned int val)
+{
+	uint32_t wptr;
+
+	wptr = (regno * 4);  //32 bit word addressing
+    wptr += (entry*4);
+    poke (wptr, val);
+}
+
 static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 {
     // PLL multipler in bits 0..4 (values from 5 to 31 allowed)
@@ -166,25 +175,37 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 /* Thanks again, Inmos. Somewhere deep in the data sheet is a one liner about the palette being used for
 // gamma correction in true colour modes.
 //some sort of gamma correction*/
-void bt709Gamma (int index, uint8_t *red, uint8_t *green, uint8_t *blue) {
+/*void bt709Gamma (int index, uint8_t *red, uint8_t *green, uint8_t *blue) {
     unsigned int corrected;
     float g,i;
     i = (float)index;
     g = i/255.0f;
     g = powf(g, 1/2.2f);
+//printf ("%d,", (unsigned char)(*red*g));
     *red *= g;
     *green *= g;
     *blue *= g;
+}*/
+void bt709Gamma (uint8_t *c) {
+    float g;
+    g = (float)*c;
+    g = g/256.0f;
+    g = powf(g, 1/2.2f);
+//printf ("%d,", (unsigned char)(*c*g));
+    *c *= g;
 }
 
 void set_palette (int index, uint8_t red, uint8_t green, uint8_t blue) {
-    bt709Gamma (index, &red, &green, &blue);
+    printf ("BC %d %hhX %hhX %hhX\n",index,red,green,blue);
+    bt709Gamma (&red);
+    bt709Gamma (&green);
+    bt709Gamma (&blue);
+    printf ("AC %d %hhX %hhX %hhX\n",index,red,green,blue);
     uint32_t red32 = red;
     uint32_t green32 = green;
-    ims332_write_register(0, IMS332_REG_LUT_BASE + index,
-                (red32 << 16) |
-                (green32 << 8) |
-                blue);
+    uint32_t entry = (red32 << 16) | (green32 << 8) | blue;
+    printf ("%d 0x%X\n", index, entry);
+    ims332_write_pal(0, IMS332_REG_LUT_BASE, index, entry);
 }
 
 int main(int argc, char **argv) {
@@ -279,7 +300,7 @@ int main(int argc, char **argv) {
     uint32_t a = 0x80400000;
     unsigned char r,g,b;
     uint32_t c=0;
-    for (i = 0; i < 256; i++)
+    for (i = 0; i < 10; i++)
     {
         r = 13*(256-i) % 256;
         g = 7*(256-i) % 256;
@@ -287,9 +308,9 @@ int main(int argc, char **argv) {
         set_palette(i,r,g,b);
     }
     // dump palette
-    for (i=0; i<240; i++) {
-        poke_words(a, 640*2, c);
-        a += 640*2;
+    for (i=0; i<10; i++) {
+        poke_words(a, 640*20, c);
+        a += 640*20;
         c += 0x01010101;
     }
     return(0);
