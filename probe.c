@@ -53,7 +53,7 @@ int test(uint32_t addr, int count) {
 }
 
 void poke(uint32_t addr, uint32_t val) {
-    printf ("poking 0x%X to 0x%X\n", val, addr);
+    //printf ("poking 0x%X to 0x%X\n", val, addr);
     byte_out (0);  // poke
     word_out (addr);
     word_out (val);
@@ -163,10 +163,25 @@ static void probe_ims332_init(uint32_t regs, MONITOR_TYPE *mon)
 
 }
 
-void set_palette (uint32_t regs, int index, uint8_t red, uint8_t green, uint8_t blue) {
+/* Thanks again, Inmos. Somewhere deep in the data sheet is a one liner about the palette being used for
+// gamma correction in true colour modes.
+//some sort of gamma correction*/
+void bt709Gamma (int index, uint8_t *red, uint8_t *green, uint8_t *blue) {
+    unsigned int corrected;
+    float g,i;
+    i = (float)index;
+    g = i/255.0f;
+    g = powf(g, 1/2.2f);
+    *red *= g;
+    *green *= g;
+    *blue *= g;
+}
+
+void set_palette (int index, uint8_t red, uint8_t green, uint8_t blue) {
+    bt709Gamma (index, &red, &green, &blue);
     uint32_t red32 = red;
     uint32_t green32 = green;
-    ims332_write_register(regs, IMS332_REG_LUT_BASE + (index & 0xff),
+    ims332_write_register(0, IMS332_REG_LUT_BASE + index,
                 (red32 << 16) |
                 (green32 << 8) |
                 blue);
@@ -262,15 +277,16 @@ int main(int argc, char **argv) {
     //setup colour palette
     /* a somewhat satisfying, but very ripped off palette */
     uint32_t a = 0x80400000;
-    int r,g,b;
+    unsigned char r,g,b;
     uint32_t c=0;
     for (i = 0; i < 256; i++)
     {
         r = 13*(256-i) % 256;
         g = 7*(256-i) % 256;
         b = 11*(256-i) % 256;
-        set_palette(0,i,r,g,b);
+        set_palette(i,r,g,b);
     }
+    // dump palette
     for (i=0; i<240; i++) {
         poke_words(a, 640*2, c);
         a += 640*2;
